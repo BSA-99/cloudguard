@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.venv/
+.env
+audit_log.jsonl
+# Live-subscription artifacts contain your real subscription ID. Keep them local.
+ground_truth.live.json
+mock/live*.json
