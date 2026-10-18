@@ -31,6 +31,7 @@ be real and reproducible.
 - `docs/corpus.json` — Day-1 docs index (replaced by RAG on Day 3)
 
 ## Workflow
+- The roadmap and progress checklist live in `docs/PLAN.md`. Work on one unchecked item at a time, tick it when done.
 - `pip install -e ".[dev]"` then `pytest -q` (mock mode, no Azure needed). Keep it green on every commit.
 - After editing `seed_spec.json`: `python sandbox/seed.py --mock-only` and commit the regenerated files.
 - If you change a KQL query, change the matching `MockBackend` method in the same commit,
