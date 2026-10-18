@@ -41,6 +41,43 @@ def current_subscription() -> str:
     return out.stdout.strip()
 
 
+def az_show_min_tls_version(resource_group: str, name: str) -> str:
+    """Read back what Azure actually stored, since a successful `create` does not guarantee
+    the platform honored every requested property (e.g. retired TLS versions)."""
+    out = subprocess.run(
+        ["az", "storage", "account", "show", "-g", resource_group, "-n", name,
+         "--query", "minimumTlsVersion", "-o", "tsv"],
+        capture_output=True, text=True, check=True,
+    )
+    return out.stdout.strip()
+
+
+def verify_weak_tls(
+    spec: dict,
+    sa_created: dict[str, str],
+    suffix: str,
+    show=az_show_min_tls_version,
+) -> bool:
+    """Ground truth for weak_tls must reflect what Azure actually stored, not what we asked
+    for or whether the `create` call exited 0. Returns whether every spec'd weak account is
+    still weak on the live platform."""
+    weak_tls_seeded = True
+    for sa in spec["storage_accounts"]:
+        name = sandbox.sa_name(sa, suffix)
+        rg = sa_created.get(name)
+        if rg is None:
+            if sa["weak"]:
+                weak_tls_seeded = False
+            continue
+        actual = show(rg, name)
+        if actual != sa["min_tls"]:
+            print(f"!! {name}: requested min TLS {sa['min_tls']} but Azure stored {actual!r}.",
+                  file=sys.stderr)
+        if sa["weak"] and actual not in ("TLS1_0", "TLS1_1"):
+            weak_tls_seeded = False
+    return weak_tls_seeded
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--apply", action="store_true", help="actually run the commands")
@@ -68,21 +105,23 @@ def main() -> int:
         print("Confirmation did not match; aborting.")
         return 1
 
-    weak_tls_seeded = True
+    sa_created: dict[str, str] = {}  # storage account name -> resource group, for accounts that actually got created
     for c in cmds:
         print("+", shlex.join(c))
         r = subprocess.run(c, capture_output=True, text=True)
         if r.returncode != 0:
             print(r.stderr.strip(), file=sys.stderr)
-            if "--min-tls-version" in c and "TLS1_0" in c:
-                # Azure Storage retired TLS 1.0/1.1 on 2026-02-03; the platform may refuse this setting.
-                print("!! weak-TLS account was rejected by Azure; it will be excluded from live ground truth.")
-                weak_tls_seeded = False
-                continue
             if not a.destroy:
                 return r.returncode
+            continue
+        if c[:4] == ["az", "storage", "account", "create"]:
+            sa_created[c[c.index("-n") + 1]] = c[c.index("-g") + 1]
 
     if not a.destroy:
+        # Azure can accept a storage account `create` (exit 0) while silently storing a
+        # different minimumTlsVersion than requested (e.g. TLS 1.0/1.1 were retired), so
+        # ground truth must come from reading the platform back, not from the exit code.
+        weak_tls_seeded = verify_weak_tls(spec, sa_created, spec["suffix"])
         write_json(ROOT / "ground_truth.live.json", sandbox.build_ground_truth(spec, sub, weak_tls_seeded))
         print("\nNext: CLOUDGUARD_LIVE_TESTS=1 AZURE_SUBSCRIPTION_ID=<id> pytest -m live")
     return 0

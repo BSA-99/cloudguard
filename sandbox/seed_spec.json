@@ -18,7 +18,8 @@
     {"name": "cg-disk-orphan-02", "resource_group": "cg-test-batch",  "sku": "Standard_LRS", "size_gb": 4}
   ],
   "storage_accounts": [
-    {"name_prefix": "cgweaktls",   "resource_group": "cg-legacy-app", "min_tls": "TLS1_0", "weak": true},
+    {"name_prefix": "cgweaktls",   "resource_group": "cg-legacy-app", "min_tls": "TLS1_0", "weak": true,
+     "note": "Mock-only: represents a legacy account provisioned before Azure retired TLS 1.0/1.1. `az storage account create --min-tls-version TLS1_0` now exits 0 but Azure stores TLS1_2, so this account can't be recreated live; seed.py reads back minimumTlsVersion after apply and drops weak_tls from ground_truth.live.json when the platform didn't honor it."},
     {"name_prefix": "cgstrongtls", "resource_group": "cg-legacy-app", "min_tls": "TLS1_2", "weak": false,
      "resource_lock": "CanNotDelete",
      "trap": "Look-alike negative: storage account that is fine on TLS and carries the resource-level lock."}
