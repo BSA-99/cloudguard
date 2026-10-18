@@ -23,6 +23,16 @@ ARM_ID_PATTERN = re.compile(
 )
 
 _LOCK_SCOPE = re.compile(r"^(.*)/providers/microsoft\.authorization/locks/[^/]+$", re.IGNORECASE)
+_LOCK_RESOURCE_GROUP = re.compile(r"/resourceGroups/([^/]+)", re.IGNORECASE)
+
+
+def lock_scope(lock_id: str) -> str | None:
+    """The scope a lock applies to, derived from its own ID rather than its `resourceGroup`
+    property: a lock on a single resource inside an RG has the same `resourceGroup` value as
+    an RG-scope lock, so that property alone can't tell the two apart (the seeded
+    `cg-legacy-app` trap). Shared by MockBackend and ResourceGraphBackend."""
+    m = _LOCK_SCOPE.match(lock_id.lower())
+    return m.group(1) if m else None
 
 
 class InvalidResourceId(ValueError):
@@ -65,11 +75,11 @@ class MockBackend:
         return [r for r in self.resources if r.get("type", "").lower() == rtype]
 
     def unlocked_resource_groups(self) -> list[dict[str, Any]]:
-        locked_scopes = set()
-        for lock in self._of_type("microsoft.authorization/locks"):
-            m = _LOCK_SCOPE.match(lock["id"].lower())
-            if m:
-                locked_scopes.add(m.group(1))
+        locked_scopes = {
+            scope
+            for lock in self._of_type("microsoft.authorization/locks")
+            if (scope := lock_scope(lock["id"])) is not None
+        }
         rows = [
             {k: c.get(k) for k in ("id", "name", "location", "subscriptionId", "tags")}
             for c in self.containers
@@ -113,11 +123,16 @@ class MockBackend:
 
 
 class ResourceGraphBackend:
-    """Live mode: runs the KQL in queries.py through Azure Resource Graph.
+    """Live mode: resource groups, disks and storage accounts come from the KQL in
+    queries.py via Azure Resource Graph. Locks do not: Resource Graph does not index
+    microsoft.authorization/locks, so lock data comes from the read-only ARM Management
+    Locks list API (ManagementLockClient.management_locks.list_at_subscription_level)
+    instead, and lock scope is still derived from each lock's own ID (see `lock_scope`).
 
     Auth is DefaultAzureCredential, which resolves to the managed identity when deployed
     on Container Apps, the OIDC federated credential in GitHub Actions, and `az login`
-    on a laptop. The identity only ever needs the built-in Reader role.
+    on a laptop. The identity only ever needs the built-in Reader role; both Resource Graph
+    queries and `list_at_subscription_level` are list/read calls, never writes.
     """
 
     name = "live"
@@ -125,10 +140,13 @@ class ResourceGraphBackend:
     def __init__(self, subscription_id: str):
         # Imported lazily so mock mode and CI don't need the Azure SDK installed.
         from azure.identity import DefaultAzureCredential
+        from azure.mgmt.resource.locks import ManagementLockClient
         from azure.mgmt.resourcegraph import ResourceGraphClient
 
         self.subscription_id = subscription_id
-        self._client = ResourceGraphClient(DefaultAzureCredential())
+        credential = DefaultAzureCredential()
+        self._client = ResourceGraphClient(credential)
+        self._locks_client = ManagementLockClient(credential, subscription_id)
 
     def run(self, kql: str) -> list[dict[str, Any]]:
         from azure.mgmt.resourcegraph.models import QueryRequest, QueryRequestOptions
@@ -147,8 +165,14 @@ class ResourceGraphBackend:
             if not skip_token:
                 return rows
 
+    def _locked_scopes(self) -> set[str]:
+        locks = self._locks_client.management_locks.list_at_subscription_level()
+        return {scope for lock in locks if (scope := lock_scope(lock.id)) is not None}
+
     def unlocked_resource_groups(self) -> list[dict[str, Any]]:
-        return self.run(queries.UNLOCKED_RESOURCE_GROUPS)
+        locked_scopes = self._locked_scopes()
+        rows = self.run(queries.RESOURCE_GROUPS)
+        return [r for r in rows if r["id"].lower() not in locked_scopes]
 
     def unattached_disks(self) -> list[dict[str, Any]]:
         return self.run(queries.UNATTACHED_DISKS)
@@ -161,9 +185,23 @@ class ResourceGraphBackend:
         rows = self.run(queries.GET_RESOURCE.format(resource_id=rid))
         return rows[0] if rows else None
 
+    def _lock_rows(self) -> list[dict[str, Any]]:
+        """Lock rows in the same shape queries.py rows and sandbox.py's mock locks use,
+        since Resource Graph never returns locks for SNAPSHOT_RESOURCES to project."""
+        rows = []
+        for lock in self._locks_client.management_locks.list_at_subscription_level():
+            m = _LOCK_RESOURCE_GROUP.search(lock.id)
+            rows.append({
+                "id": lock.id, "name": lock.name, "type": "microsoft.authorization/locks",
+                "resourceGroup": m.group(1) if m else None, "location": "global",
+                "subscriptionId": self.subscription_id, "tags": {}, "sku": None, "managedBy": None,
+                "properties": {"level": lock.level, "notes": lock.notes},
+            })
+        return rows
+
     def snapshot(self) -> dict[str, Any]:
         return {
             "subscriptionId": self.subscription_id,
             "resource_containers": self.run(queries.SNAPSHOT_CONTAINERS),
-            "resources": self.run(queries.SNAPSHOT_RESOURCES),
+            "resources": self.run(queries.SNAPSHOT_RESOURCES) + self._lock_rows(),
         }

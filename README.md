@@ -12,7 +12,7 @@ must approve.**
 
 | Tool | What it returns | Source |
 |---|---|---|
-| `list_unlocked_resource_groups` | Resource groups with no lock at group scope | KQL over `resourcecontainers` + `resources` |
+| `list_unlocked_resource_groups` | Resource groups with no lock at group scope | KQL over `resourcecontainers` (groups) + ARM Management Locks list API (locks — Resource Graph doesn't index them) |
 | `list_unattached_disks` | Managed disks in the `Unattached` state | KQL over `resources` |
 | `find_weak_tls` | Storage accounts with minimum TLS below 1.2 or unset | KQL over `resources` |
 | `get_resource(id)` | One resource by ID, or not-found | KQL, ID validated first |
@@ -37,7 +37,11 @@ cloudguard --mock tool get_resource --arg resource_id=/subscriptions/00000000-00
 
 - 6 resource groups, 4 unlocked
 - 2 unattached Standard HDD disks
-- 1 storage account with minimum TLS 1.0, and a look-alike one on TLS 1.2
+- 1 storage account with minimum TLS 1.0, and a look-alike one on TLS 1.2 — the mock's
+  TLS 1.0 account is a stand-in for a legacy account provisioned before Azure retired
+  TLS 1.0/1.1; `az storage account create --min-tls-version TLS1_0` now exits 0 but Azure
+  silently stores TLS1_2, so this account can no longer be recreated against a live
+  subscription (see "Running it against a real subscription" below).
 - **Trap 1:** `cg-legacy-app` has a lock on one storage account but none on the group. A query
   that groups locks by `resourceGroup` reports it as locked; ours derives each lock's scope
   from its ID. `test_naive_lock_logic_would_miss_the_trap` shows the naive version losing 1 of 4.
@@ -61,12 +65,23 @@ CLOUDGUARD_LIVE_TESTS=1 pytest -m live
 python sandbox/seed.py --destroy --apply   # clean up
 ```
 
-The auditing identity only needs the built-in **Reader** role.
+The auditing identity only needs the built-in **Reader** role. Locks come from the ARM
+Management Locks list API (`ManagementLockClient.management_locks.list_at_subscription_level`),
+not Resource Graph — Resource Graph does not index `microsoft.authorization/locks`, so a
+resource group's lock status has to be resolved from that separate, still read-only, API.
+
+`seed.py` doesn't trust the `create` command's exit code for `weak_tls` ground truth: after
+`--apply` it reads back each storage account's `minimumTlsVersion` with `az storage account
+show` and only marks the account weak in `ground_truth.live.json` if Azure actually stored a
+weak value, printing a warning whenever the stored value differs from the spec. This is why
+the weak-TLS account can't be reproduced live — current Azure accepts the request but stores
+TLS1_2 regardless.
 
 ## Responsible design
 
-- Read-only by construction: Resource Graph has no write API, the auditing identity holds
-  Reader only, and a test fails the build if an ARM write client appears in the source.
+- Read-only by construction: Resource Graph has no write API and the ARM Management Locks
+  client is only ever called with `list_at_subscription_level`; the auditing identity holds
+  Reader only, and a test fails the build if a write-shaped ARM method call appears in the source.
 - Remediation is only ever proposed; a human approves (Day 2).
 - Findings come from deterministic queries, not from the model, and IDs are checked with
   `get_resource`.

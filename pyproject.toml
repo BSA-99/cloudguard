@@ -17,6 +17,9 @@ dependencies = [
 live = [
     "azure-identity>=1.15",
     "azure-mgmt-resourcegraph>=8.0",
+    # Resource Graph does not index microsoft.authorization/locks; lock data comes from
+    # this read-only ARM control-plane client instead (ManagementLockClient).
+    "azure-mgmt-resource-locks>=1.0.0",
 ]
 dev = [
     "pytest>=8",

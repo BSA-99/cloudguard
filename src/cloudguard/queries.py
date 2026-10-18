@@ -4,22 +4,15 @@ Kept as plain strings in one file so they can be reviewed, copied into the porta
 Resource Graph Explorer, and diffed against the mock implementations in backends.py.
 """
 
-# A resource group counts as LOCKED only if a lock sits at exactly the RG scope.
-# A lock on a single resource *inside* the RG has the same `resourceGroup` value, so a
-# naive `summarize by resourceGroup` would wrongly mark the RG as locked. We derive the
-# lock's scope from its ID instead. The seeded sandbox contains this exact trap.
-# Subscription-scope locks are out of scope for v0.1 (the sandbox has none).
-UNLOCKED_RESOURCE_GROUPS = r"""
+# Resource Graph's `resources` table does not index microsoft.authorization/locks
+# (confirmed empirically: az lock list shows locks that this table never returns), so lock
+# scope can't be resolved in KQL. This query only enumerates resource groups; lock data and
+# the scope-from-ID derivation (a lock on a single resource inside the RG must not count as
+# a group-scope lock, per the seeded `cg-legacy-app` trap) live in backends.py, sourced from
+# the read-only ARM Management Locks list API (ManagementLockClient).
+RESOURCE_GROUPS = r"""
 resourcecontainers
 | where type =~ 'microsoft.resources/subscriptions/resourcegroups'
-| project rgId = tolower(id), id, name, location, subscriptionId, tags
-| join kind=leftouter (
-    resources
-    | where type =~ 'microsoft.authorization/locks'
-    | extend lockScope = tolower(extract(@'^(.*)/providers/microsoft\.authorization/locks/[^/]+$', 1, tolower(id)))
-    | summarize lockCount = count(), lockLevels = make_set(tostring(properties.level)) by lockScope
-) on $left.rgId == $right.lockScope
-| where isnull(lockCount) or lockCount == 0
 | project id, name, location, subscriptionId, tags
 | order by name asc
 """
@@ -63,8 +56,11 @@ resourcecontainers
 | project id, name, type, location, subscriptionId, tags, properties
 """
 
+# microsoft.authorization/locks is deliberately absent here: Resource Graph doesn't index
+# it. ResourceGraphBackend.snapshot() merges lock rows in separately from the ARM Management
+# Locks list API so the resulting mock JSON still matches the shape sandbox.py produces.
 SNAPSHOT_RESOURCES = r"""
 resources
-| where type in~ ('microsoft.authorization/locks', 'microsoft.compute/disks', 'microsoft.storage/storageaccounts')
+| where type in~ ('microsoft.compute/disks', 'microsoft.storage/storageaccounts')
 | project id, name, type, resourceGroup, location, subscriptionId, tags, sku, properties, managedBy
 """

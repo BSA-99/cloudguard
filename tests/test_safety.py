@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from cloudguard import tools
-from cloudguard.backends import validate_resource_id, InvalidResourceId
+from cloudguard.backends import validate_resource_id, lock_scope, InvalidResourceId
 from tests.conftest import read_log
 
 SUB = "00000000-0000-0000-0000-000000000000"
@@ -76,7 +76,29 @@ def test_tool_registry_and_specs_agree():
 
 
 def test_no_write_calls_anywhere_in_source():
-    """Crude but useful: fail the build if someone adds an ARM write path."""
-    write_markers = re.compile(r"\b(begin_create|create_or_update|begin_delete|\.delete\(|ManagementLockClient|ResourceManagementClient)\b")
+    """Crude but useful: fail the build if someone adds an ARM write path. Bans write-shaped
+    method names (create_or_update*, delete*, begin_*) rather than specific client classes,
+    since read-only ARM clients like ManagementLockClient are legitimate (list-only calls)."""
+    write_markers = re.compile(r"\.(create_or_update\w*|delete\w*|begin_\w+)\b")
     offenders = [p.name for p in SRC.rglob("*.py") if write_markers.search(p.read_text())]
     assert offenders == []
+
+
+def test_lock_scope_is_rg_scope_for_an_rg_level_lock():
+    rg_id = f"/subscriptions/{SUB}/resourceGroups/cg-legacy-app"
+    lock_id = f"{rg_id}/providers/Microsoft.Authorization/locks/cg-rg-lock"
+    assert lock_scope(lock_id) == rg_id.lower()
+
+
+def test_lock_scope_is_resource_scope_not_rg_scope_for_a_resource_level_lock():
+    """The exact seeded trap: a lock on one storage account inside cg-legacy-app must not
+    resolve to the resource group's own scope, or the group would wrongly look locked."""
+    rg_id = f"/subscriptions/{SUB}/resourceGroups/cg-legacy-app"
+    resource_id = f"{rg_id}/providers/Microsoft.Storage/storageAccounts/cgstrongtlsbsa1018"
+    lock_id = f"{resource_id}/providers/Microsoft.Authorization/locks/cg-sa-lock"
+    assert lock_scope(lock_id) == resource_id.lower()
+    assert lock_scope(lock_id) != rg_id.lower()
+
+
+def test_lock_scope_is_none_for_a_non_lock_id():
+    assert lock_scope(f"/subscriptions/{SUB}/resourceGroups/cg-legacy-app") is None

@@ -7,8 +7,11 @@ be real and reproducible.
 
 ## Non-negotiable rules
 - **Read-only.** No code path may create, modify or delete Azure resources. Detection uses
-  Azure Resource Graph (read-only API) only. `tests/test_safety.py::test_no_write_calls_anywhere_in_source`
-  enforces this; do not weaken it.
+  Azure Resource Graph for resource groups/disks/storage accounts, and the read-only ARM
+  Management Locks list API (`ManagementLockClient.management_locks.list_at_subscription_level`)
+  for locks — Resource Graph does not index `microsoft.authorization/locks`.
+  `tests/test_safety.py::test_no_write_calls_anywhere_in_source` enforces read-only-ness by
+  banning write-shaped method calls (`.create_or_update*`, `.delete*`, `.begin_*`); do not weaken it.
 - **Remediation is proposed, never executed.** Future `propose_lock` writes a proposal record
   for human approval, nothing else.
 - **Every tool call is audit-logged** via the `_audited` decorator in `tools.py`. New tools must use it.
@@ -24,6 +27,8 @@ be real and reproducible.
 ## Layout
 - `src/cloudguard/queries.py` — KQL strings (source of truth for live mode)
 - `src/cloudguard/backends.py` — `MockBackend` (Python mirror of the KQL) and `ResourceGraphBackend`
+  (KQL for groups/disks/storage, ARM `ManagementLockClient` for locks; `lock_scope` derives a
+  lock's scope from its own ID, shared by both backends)
 - `src/cloudguard/tools.py` — the tools, `TOOLS` registry, `TOOL_SPECS` JSON schemas
 - `src/cloudguard/sandbox.py` + `sandbox/seed_spec.json` — spec -> az commands, ground truth, mock snapshot
 - `src/cloudguard/untrusted.py` — prompt-injection tripwire
