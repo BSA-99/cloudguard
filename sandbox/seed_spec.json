@@ -1,7 +1,7 @@
 {
   "description": "CloudGuard sandbox v1: 6 resource groups (4 unlocked), 2 unattached Standard HDD disks, 1 storage account with minimum TLS 1.0, plus deliberate traps.",
   "location": "canadacentral",
-  "suffix": "demo01",
+  "suffix": "bsa1018",
   "resource_groups": [
     {"name": "cg-prod-web",    "lock": "CanNotDelete"},
     {"name": "cg-prod-data",   "lock": "CanNotDelete"},

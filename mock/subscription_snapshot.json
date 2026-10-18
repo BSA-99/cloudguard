@@ -141,8 +141,8 @@
       }
     },
     {
-      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cg-legacy-app/providers/Microsoft.Storage/storageAccounts/cgweaktlsdemo01",
-      "name": "cgweaktlsdemo01",
+      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cg-legacy-app/providers/Microsoft.Storage/storageAccounts/cgweaktlsbsa1018",
+      "name": "cgweaktlsbsa1018",
       "type": "microsoft.storage/storageaccounts",
       "resourceGroup": "cg-legacy-app",
       "location": "canadacentral",
@@ -159,8 +159,8 @@
       }
     },
     {
-      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cg-legacy-app/providers/Microsoft.Storage/storageAccounts/cgstrongtlsdemo01",
-      "name": "cgstrongtlsdemo01",
+      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cg-legacy-app/providers/Microsoft.Storage/storageAccounts/cgstrongtlsbsa1018",
+      "name": "cgstrongtlsbsa1018",
       "type": "microsoft.storage/storageaccounts",
       "resourceGroup": "cg-legacy-app",
       "location": "canadacentral",
@@ -177,7 +177,7 @@
       }
     },
     {
-      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cg-legacy-app/providers/Microsoft.Storage/storageAccounts/cgstrongtlsdemo01/providers/Microsoft.Authorization/locks/cg-sa-lock",
+      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cg-legacy-app/providers/Microsoft.Storage/storageAccounts/cgstrongtlsbsa1018/providers/Microsoft.Authorization/locks/cg-sa-lock",
       "name": "cg-sa-lock",
       "type": "microsoft.authorization/locks",
       "resourceGroup": "cg-legacy-app",

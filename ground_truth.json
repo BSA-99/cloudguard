@@ -34,7 +34,7 @@
     },
     {
       "type": "weak_tls",
-      "resource_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cg-legacy-app/providers/Microsoft.Storage/storageAccounts/cgweaktlsdemo01",
+      "resource_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cg-legacy-app/providers/Microsoft.Storage/storageAccounts/cgweaktlsbsa1018",
       "note": "min TLS TLS1_0"
     }
   ],
@@ -51,7 +51,7 @@
     },
     {
       "type": "weak_tls",
-      "resource_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cg-legacy-app/providers/Microsoft.Storage/storageAccounts/cgstrongtlsdemo01",
+      "resource_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cg-legacy-app/providers/Microsoft.Storage/storageAccounts/cgstrongtlsbsa1018",
       "note": "Look-alike negative: storage account that is fine on TLS and carries the resource-level lock."
     }
   ]
