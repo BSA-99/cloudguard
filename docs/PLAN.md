@@ -28,7 +28,10 @@ after they are measured.
 - [x] First live run (gemini-3.5-flash-lite, mock data): 7/7 findings, grounding ok, injection tag flagged and ignored, 2 steps, 2,849/617 tokens, 1 retry (503).
 
 ## Day 3 — RAG + change requests
-- [ ] ~30 public Microsoft Learn pages (locks, Policy, TLS, managed disks, Reader/RBAC); store URL + chunk
+- [x] ~30 public Microsoft Learn pages across 10 topics, pinned by commit SHA in `docs/corpus_manifest.json`;
+      `scripts/fetch_corpus.py` fetches articles + one level of includes from raw.githubusercontent.com (no
+      clone), fails loudly on any 404, never silently; every path/URL/title verified live, not from memory;
+      `corpus/raw/` committed (~420 KB); README NOTICE section names repo/license/pinned commit
 - [ ] Embeddings + Chroma (or numpy cosine); `search_docs` keeps the same signature
 - [ ] Change-request draft: summary, risk, rollback, test plan, citations (URLs from retrieval only)
 

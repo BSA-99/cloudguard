@@ -1,0 +1,278 @@
+{
+  "fetched_at": "2026-10-19T00:00:00+00:00",
+  "repos": [
+    {
+      "repo": "MicrosoftDocs/azure-docs",
+      "commit_sha": "8f89cc8a3023d185c2d965e924d5b4d22159ef45",
+      "license": "CC-BY-4.0",
+      "attribution": "Content fetched from the MicrosoftDocs/azure-docs GitHub repository (https://github.com/MicrosoftDocs/azure-docs), © Microsoft Corporation, licensed under Creative Commons Attribution 4.0 International (CC BY 4.0) per that repository's own LICENSE file: https://github.com/MicrosoftDocs/azure-docs/blob/8f89cc8a3023d185c2d965e924d5b4d22159ef45/LICENSE. Fetched verbatim at the pinned commit; no modifications made to the article text."
+    },
+    {
+      "repo": "MicrosoftDocs/azure-compute-docs",
+      "commit_sha": "c21e8e8229e33073fe93faa58a415b64279f3a44",
+      "license": "CC-BY-4.0",
+      "attribution": "Content fetched from the MicrosoftDocs/azure-compute-docs GitHub repository (https://github.com/MicrosoftDocs/azure-compute-docs), © Microsoft Corporation, licensed under Creative Commons Attribution 4.0 International (CC BY 4.0) per that repository's own LICENSE file: https://github.com/MicrosoftDocs/azure-compute-docs/blob/c21e8e8229e33073fe93faa58a415b64279f3a44/LICENSE. Fetched verbatim at the pinned commit; no modifications made to the article text."
+    },
+    {
+      "repo": "MicrosoftDocs/entra-docs",
+      "commit_sha": "8d7c7ea1c9a7bc547e6077cb3703227f2e08b043",
+      "license": "MIT",
+      "attribution": "Content fetched from the MicrosoftDocs/entra-docs GitHub repository (https://github.com/MicrosoftDocs/entra-docs), © Microsoft Corporation. Unlike its sibling docs repos, this repository's own LICENSE file states the MIT License (verified by reading the file, not assumed from the other repos' CC-BY-4.0 pattern): https://github.com/MicrosoftDocs/entra-docs/blob/8d7c7ea1c9a7bc547e6077cb3703227f2e08b043/LICENSE. Fetched verbatim at the pinned commit; no modifications made to the article text."
+    },
+    {
+      "repo": "MicrosoftDocs/cloud-adoption-framework",
+      "commit_sha": "5c44a2accff2018eba5dd738b648eef4c9db179b",
+      "license": "CC-BY-4.0",
+      "attribution": "Content fetched from the MicrosoftDocs/cloud-adoption-framework GitHub repository (https://github.com/MicrosoftDocs/cloud-adoption-framework), © Microsoft Corporation, licensed under Creative Commons Attribution 4.0 International (CC BY 4.0) per that repository's own LICENSE file: https://github.com/MicrosoftDocs/cloud-adoption-framework/blob/5c44a2accff2018eba5dd738b648eef4c9db179b/LICENSE. Fetched verbatim at the pinned commit; no modifications made to the article text."
+    }
+  ],
+  "known_issues": [
+    {
+      "repo": "MicrosoftDocs/azure-compute-docs",
+      "source_path": "articles/virtual-machines/includes/managed-disks-ultra-disks-GA-scope-and-limitations.md",
+      "reason": "disks-types.md references this include as '...-GA-...' but the actual file in the repo is lowercase '...-ga-scope-and-limitations.md' (confirmed by listing the real tree at the pinned commit). This is an upstream casing bug, not a bug in our fetch script. The include 404s; fetch_corpus.py reports it as a failed path and does not skip it silently."
+    }
+  ],
+  "articles": [
+    {
+      "id": "locks-overview",
+      "title": "Lock your Azure resources to protect your infrastructure",
+      "learn_url": "https://learn.microsoft.com/azure/azure-resource-manager/management/lock-resources",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/azure-resource-manager/management/lock-resources.md",
+      "topic": "locks"
+    },
+    {
+      "id": "policy-overview",
+      "title": "Overview of Azure Policy",
+      "learn_url": "https://learn.microsoft.com/azure/governance/policy/overview",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/governance/policy/overview.md",
+      "topic": "policy"
+    },
+    {
+      "id": "policy-effect-basics",
+      "title": "Azure Policy definitions effect basics",
+      "learn_url": "https://learn.microsoft.com/azure/governance/policy/concepts/effect-basics",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/governance/policy/concepts/effect-basics.md",
+      "topic": "policy"
+    },
+    {
+      "id": "policy-effect-audit",
+      "title": "Azure Policy definitions audit effect",
+      "learn_url": "https://learn.microsoft.com/azure/governance/policy/concepts/effect-audit",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/governance/policy/concepts/effect-audit.md",
+      "topic": "policy"
+    },
+    {
+      "id": "policy-effect-deploy-if-not-exists",
+      "title": "Azure Policy definitions deployIfNotExists effect",
+      "learn_url": "https://learn.microsoft.com/azure/governance/policy/concepts/effect-deploy-if-not-exists",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/governance/policy/concepts/effect-deploy-if-not-exists.md",
+      "topic": "policy"
+    },
+    {
+      "id": "policy-assign-portal",
+      "title": "Quickstart: Create policy assignment using Azure portal",
+      "learn_url": "https://learn.microsoft.com/azure/governance/policy/assign-policy-portal",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/governance/policy/assign-policy-portal.md",
+      "topic": "policy"
+    },
+    {
+      "id": "policy-remediate-resources",
+      "title": "Remediate non-compliant resources",
+      "learn_url": "https://learn.microsoft.com/azure/governance/policy/how-to/remediate-resources",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/governance/policy/how-to/remediate-resources.md",
+      "topic": "policy"
+    },
+    {
+      "id": "resource-graph-overview",
+      "title": "Overview of Azure Resource Graph",
+      "learn_url": "https://learn.microsoft.com/azure/governance/resource-graph/overview",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/governance/resource-graph/overview.md",
+      "topic": "resource_graph"
+    },
+    {
+      "id": "resource-graph-starter-samples",
+      "title": "Starter query samples",
+      "learn_url": "https://learn.microsoft.com/azure/governance/resource-graph/samples/starter",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/governance/resource-graph/samples/starter.md",
+      "topic": "resource_graph"
+    },
+    {
+      "id": "disks-find-unattached",
+      "title": "Find and delete unattached Azure managed and unmanaged disks - Azure portal",
+      "learn_url": "https://learn.microsoft.com/azure/virtual-machines/disks-find-unattached-portal",
+      "repo": "MicrosoftDocs/azure-compute-docs",
+      "source_path": "articles/virtual-machines/disks-find-unattached-portal.md",
+      "topic": "disks"
+    },
+    {
+      "id": "disks-types",
+      "title": "Select a disk type for Azure IaaS VMs - managed disks",
+      "learn_url": "https://learn.microsoft.com/azure/virtual-machines/disks-types",
+      "repo": "MicrosoftDocs/azure-compute-docs",
+      "source_path": "articles/virtual-machines/disks-types.md",
+      "topic": "disks"
+    },
+    {
+      "id": "disks-understand-billing",
+      "title": "Understand Azure Disk Storage billing",
+      "learn_url": "https://learn.microsoft.com/azure/virtual-machines/disks-understand-billing",
+      "repo": "MicrosoftDocs/azure-compute-docs",
+      "source_path": "articles/virtual-machines/disks-understand-billing.md",
+      "topic": "disks"
+    },
+    {
+      "id": "storage-tls-minimum-version",
+      "title": "Enforce a Minimum Required Version of Transport Layer Security (TLS)",
+      "learn_url": "https://learn.microsoft.com/azure/storage/common/transport-layer-security-configure-minimum-version",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/storage/common/transport-layer-security-configure-minimum-version.md",
+      "topic": "storage_tls"
+    },
+    {
+      "id": "storage-tls-migrate-to-tls2",
+      "title": "Migrate to Transport Layer Security (TLS) 1.2 for Azure Blob Storage",
+      "learn_url": "https://learn.microsoft.com/azure/storage/common/transport-layer-security-configure-migrate-to-TLS2",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/storage/common/transport-layer-security-configure-migrate-to-TLS2.md",
+      "topic": "storage_tls"
+    },
+    {
+      "id": "storage-tls-client-version",
+      "title": "Configure Transport Layer Security (TLS) for a client application",
+      "learn_url": "https://learn.microsoft.com/azure/storage/common/transport-layer-security-configure-client-version",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/storage/common/transport-layer-security-configure-client-version.md",
+      "topic": "storage_tls"
+    },
+    {
+      "id": "storage-security-blobs",
+      "title": "Security Recommendations for Blob Storage",
+      "learn_url": "https://learn.microsoft.com/azure/storage/blobs/security-recommendations",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/storage/blobs/security-recommendations.md",
+      "topic": "storage_security"
+    },
+    {
+      "id": "storage-security-require-secure-transfer",
+      "title": "Require secure transfer to ensure secure connections",
+      "learn_url": "https://learn.microsoft.com/azure/storage/common/storage-require-secure-transfer",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/storage/common/storage-require-secure-transfer.md",
+      "topic": "storage_security"
+    },
+    {
+      "id": "rbac-overview",
+      "title": "What is Azure role-based access control (Azure RBAC)?",
+      "learn_url": "https://learn.microsoft.com/azure/role-based-access-control/overview",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/role-based-access-control/overview.md",
+      "topic": "rbac"
+    },
+    {
+      "id": "rbac-reader-role",
+      "title": "Azure built-in roles for General - Azure RBAC",
+      "learn_url": "https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/general#reader",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/role-based-access-control/built-in-roles/general.md",
+      "topic": "rbac"
+    },
+    {
+      "id": "rbac-best-practices",
+      "title": "Best practices for Azure RBAC",
+      "learn_url": "https://learn.microsoft.com/azure/role-based-access-control/best-practices",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/role-based-access-control/best-practices.md",
+      "topic": "rbac"
+    },
+    {
+      "id": "rbac-scope-overview",
+      "title": "Understand scope for Azure RBAC",
+      "learn_url": "https://learn.microsoft.com/azure/role-based-access-control/scope-overview",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/role-based-access-control/scope-overview.md",
+      "topic": "rbac"
+    },
+    {
+      "id": "identity-managed-identities-overview",
+      "title": "Managed identities for Azure resources",
+      "learn_url": "https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/overview",
+      "repo": "MicrosoftDocs/entra-docs",
+      "source_path": "docs/identity/managed-identities-azure-resources/overview.md",
+      "topic": "identity"
+    },
+    {
+      "id": "identity-managed-identities-overview-for-developers",
+      "title": "Developer introduction and guidelines",
+      "learn_url": "https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/overview-for-developers",
+      "repo": "MicrosoftDocs/entra-docs",
+      "source_path": "docs/identity/managed-identities-azure-resources/overview-for-developers.md",
+      "topic": "identity"
+    },
+    {
+      "id": "identity-workload-identity-federation",
+      "title": "Workload Identity Federation",
+      "learn_url": "https://learn.microsoft.com/entra/workload-id/workload-identity-federation",
+      "repo": "MicrosoftDocs/entra-docs",
+      "source_path": "docs/workload-id/workload-identity-federation.md",
+      "topic": "identity"
+    },
+    {
+      "id": "tagging-caf-resource-tagging",
+      "title": "Define your tagging strategy",
+      "learn_url": "https://learn.microsoft.com/azure/cloud-adoption-framework/ready/azure-best-practices/resource-tagging",
+      "repo": "MicrosoftDocs/cloud-adoption-framework",
+      "source_path": "docs/ready/azure-best-practices/resource-tagging.md",
+      "topic": "tagging_governance"
+    },
+    {
+      "id": "tagging-tag-resources",
+      "title": "Use tags to organize your Azure resources and management hierarchy",
+      "learn_url": "https://learn.microsoft.com/azure/azure-resource-manager/management/tag-resources",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/azure-resource-manager/management/tag-resources.md",
+      "topic": "tagging_governance"
+    },
+    {
+      "id": "governance-caf-enforce-policies",
+      "title": "Enforce cloud governance policies",
+      "learn_url": "https://learn.microsoft.com/azure/cloud-adoption-framework/govern/enforce-cloud-governance-policies",
+      "repo": "MicrosoftDocs/cloud-adoption-framework",
+      "source_path": "docs/govern/enforce-cloud-governance-policies.md",
+      "topic": "tagging_governance"
+    },
+    {
+      "id": "cost-mgt-best-practices",
+      "title": "Optimize your cloud investment with Cost Management",
+      "learn_url": "https://learn.microsoft.com/azure/cost-management-billing/costs/cost-mgt-best-practices",
+      "repo": "MicrosoftDocs/azure-docs",
+      "source_path": "articles/cost-management-billing/costs/cost-mgt-best-practices.md",
+      "topic": "cost"
+    },
+    {
+      "id": "cost-caf-track-costs",
+      "title": "Track costs across business units, environments, or projects",
+      "learn_url": "https://learn.microsoft.com/azure/cloud-adoption-framework/ready/azure-best-practices/track-costs",
+      "repo": "MicrosoftDocs/cloud-adoption-framework",
+      "source_path": "docs/ready/azure-best-practices/track-costs.md",
+      "topic": "cost"
+    },
+    {
+      "id": "cost-caf-manage-costs",
+      "title": "Manage costs and billing for your Azure resources",
+      "learn_url": "https://learn.microsoft.com/azure/cloud-adoption-framework/ready/azure-setup-guide/manage-costs",
+      "repo": "MicrosoftDocs/cloud-adoption-framework",
+      "source_path": "docs/ready/azure-setup-guide/manage-costs.md",
+      "topic": "cost"
+    }
+  ]
+}

@@ -7,7 +7,7 @@ silently reaching the LLM on Day 2.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -61,3 +61,43 @@ class GroundTruth(BaseModel):
     expected_findings: list[GroundTruthItem]
     # Resources deliberately seeded as look-alikes that must NOT be flagged.
     expected_negatives: list[GroundTruthItem] = Field(default_factory=list)
+
+
+# The pinned RAG corpus (Day 3). docs/corpus_manifest.json validates against CorpusManifest;
+# scripts/fetch_corpus.py produces it, corpus/raw/ holds what it fetched.
+CorpusTopic = Literal[
+    "locks", "policy", "resource_graph", "disks", "storage_tls",
+    "storage_security", "rbac", "identity", "tagging_governance", "cost",
+]
+
+
+class CorpusRepoPin(BaseModel):
+    repo: str
+    commit_sha: str
+    license: str
+    attribution: str
+
+
+class CorpusKnownIssue(BaseModel):
+    repo: str
+    source_path: str
+    reason: str
+
+
+class CorpusArticle(BaseModel):
+    id: str
+    title: str
+    learn_url: str
+    repo: str
+    source_path: str
+    topic: CorpusTopic
+    # Heading names to keep, for an article too large to index whole; step 2's chunker
+    # honors this. Unset (None) means "index the whole article" - true for all 30 today.
+    sections: list[str] | None = None
+
+
+class CorpusManifest(BaseModel):
+    fetched_at: str
+    repos: list[CorpusRepoPin]
+    known_issues: list[CorpusKnownIssue] = Field(default_factory=list)
+    articles: list[CorpusArticle]

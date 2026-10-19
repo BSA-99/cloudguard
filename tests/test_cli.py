@@ -47,6 +47,23 @@ def test_agent_command_reports_findings_answer_grounding_proposals_and_stats(cap
     assert "== Run stats ==" in out
     assert "stopped_reason: final_answer" in out
     assert "model: fake" in out  # FakeLLM has no .model attribute; falls back to .name
+    # Only list_unattached_disks ran this audit, so the other two detectors are reported missing.
+    assert "Detectors not run in this audit: list_unlocked_resource_groups, find_weak_tls" in out
+
+
+def test_agent_command_omits_the_missing_detectors_line_when_all_ran(capsys):
+    llm = FakeLLM([
+        _tool_call("list_unlocked_resource_groups", call_id="c1"),
+        _tool_call("list_unattached_disks", call_id="c2"),
+        _tool_call("find_weak_tls", call_id="c3"),
+        LLMResponse(text="Full audit done."),
+    ])
+
+    exit_code = cli.main(["--mock", "agent", "audit this subscription"], llm=llm)
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Detectors not run" not in out
 
 
 def test_agent_command_reports_a_created_proposal(capsys):

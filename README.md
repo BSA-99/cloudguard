@@ -127,6 +127,48 @@ weak value, printing a warning whenever the stored value differs from the spec. 
 the weak-TLS account can't be reproduced live — current Azure accepts the request but stores
 TLS1_2 regardless.
 
+## RAG corpus (Day 3)
+
+`docs/corpus_manifest.json` pins 30 public Microsoft Learn articles across the 10 topics
+`search_docs` needs to cite (locks, policy, Resource Graph, managed disks, storage TLS,
+storage security, RBAC, identity, tagging/governance, cost). Each entry names its source
+GitHub repo, the exact `source_path`, and the commit SHA it was fetched at — never fetched
+from memory, every path and URL verified live before being added.
+
+```bash
+python scripts/fetch_corpus.py --resolve   # re-resolve each repo's current commit SHA (git ls-remote, no clone)
+python scripts/fetch_corpus.py             # fetch articles + one level of [!INCLUDE ...] files at the pinned SHAs
+pytest tests/test_corpus_manifest.py       # schema, unique ids, allowed topics, learn_url prefix, files present
+```
+
+`corpus/raw/` (committed, ~420 KB) holds the fetched article Markdown plus
+`corpus/raw/includes/<repo>/...` for same-repo includes — much of the real content in these
+docs lives in includes, not the article body. `~/`-prefixed includes point at a different
+pinned repo (`MicrosoftDocs/reusable-content`) and are generic boilerplate (free-trial
+banners, GDPR notices), not topic content, so the script logs and skips them rather than
+pinning a fifth repo for them. The one known, pre-existing exception is listed in the
+manifest's `known_issues`: `disks-types.md` references an include with the wrong case
+(`...-GA-...` vs. the real lowercase `...-ga-...` filename) — an upstream bug in
+`azure-compute-docs`, confirmed by listing the real file tree, not guessed. The fetch script
+reports it as a failed path and exits non-zero; it does not skip it silently.
+
+## NOTICE — third-party content
+
+`corpus/raw/` contains documentation fetched from these public Microsoft repositories, under
+the license stated in **that repository's own `LICENSE` file** (checked directly, not
+assumed — `entra-docs` turned out to differ from its sibling repos):
+
+| Repo | Pinned commit | License |
+|---|---|---|
+| [MicrosoftDocs/azure-docs](https://github.com/MicrosoftDocs/azure-docs) | `8f89cc8a3023d185c2d965e924d5b4d22159ef45` | CC-BY-4.0 |
+| [MicrosoftDocs/azure-compute-docs](https://github.com/MicrosoftDocs/azure-compute-docs) | `c21e8e8229e33073fe93faa58a415b64279f3a44` | CC-BY-4.0 |
+| [MicrosoftDocs/cloud-adoption-framework](https://github.com/MicrosoftDocs/cloud-adoption-framework) | `5c44a2accff2018eba5dd738b648eef4c9db179b` | CC-BY-4.0 |
+| [MicrosoftDocs/entra-docs](https://github.com/MicrosoftDocs/entra-docs) | `8d7c7ea1c9a7bc547e6077cb3703227f2e08b043` | MIT |
+
+© Microsoft Corporation. Fetched verbatim at the pinned commit; no modifications made to the
+article text. Full attribution strings (with per-repo LICENSE links) are in
+`docs/corpus_manifest.json`.
+
 ## Responsible design
 
 - Read-only by construction: Resource Graph has no write API and the ARM Management Locks
