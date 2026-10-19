@@ -1,0 +1,21 @@
+{"query": "How do I lock a resource group so it can't be deleted?", "expected_articles": ["locks-overview"], "source": "claude-drafted"}
+{"query": "Who has permission to create or remove a resource lock?", "expected_articles": ["locks-overview"], "expected_sections": ["who-can-create-or-delete-locks"], "source": "claude-drafted"}
+{"query": "How do I stop someone deleting prod by mistake?", "expected_articles": ["locks-overview"], "source": "claude-drafted"}
+{"query": "Does a lock on a resource group also apply to the resources inside it?", "expected_articles": ["locks-overview"], "expected_sections": ["lock-inheritance"], "source": "claude-drafted"}
+{"query": "Can a CanNotDelete lock break deployments or backups?", "expected_articles": ["locks-overview"], "expected_sections": ["considerations-before-applying-your-locks"], "source": "claude-drafted"}
+{"query": "How do I enforce resource group locks automatically with Azure Policy?", "expected_articles": ["policy-effect-deploy-if-not-exists", "locks-overview"], "source": "claude-drafted"}
+{"query": "How do I see which resources are non-compliant with a policy assignment?", "expected_articles": ["policy-assign-portal"], "expected_sections": ["identify-non-compliant-resources"], "source": "claude-drafted"}
+{"query": "What does the DeployIfNotExists policy effect actually do?", "expected_articles": ["policy-effect-deploy-if-not-exists"], "source": "claude-drafted"}
+{"query": "How do I automatically remediate resources that fail a policy?", "expected_articles": ["policy-remediate-resources"], "expected_sections": ["create-a-remediation-task"], "source": "claude-drafted"}
+{"query": "Give me a sample Resource Graph query that lists storage accounts", "expected_articles": ["resource-graph-starter-samples"], "expected_sections": ["show-resources-that-contain-storage"], "source": "claude-drafted"}
+{"query": "How do I find managed disks that aren't attached to any VM?", "expected_articles": ["disks-find-unattached"], "expected_sections": ["find-and-delete-unattached-managed-disks-in-the-azure-portal"], "source": "claude-drafted"}
+{"query": "Am I still charged for a managed disk after its VM is deleted?", "expected_articles": ["disks-understand-billing", "disks-find-unattached"], "source": "claude-drafted"}
+{"query": "Find the disks that are just sitting there costing us money for no reason", "expected_articles": ["disks-find-unattached", "cost-mgt-best-practices"], "source": "claude-drafted"}
+{"query": "How do I set the minimum TLS version required on a storage account?", "expected_articles": ["storage-tls-minimum-version"], "expected_sections": ["configure-the-minimum-tls-version-for-a-storage-account"], "source": "claude-drafted"}
+{"query": "How do I check which TLS version my clients are actually using against storage?", "expected_articles": ["storage-tls-client-version", "storage-tls-minimum-version"], "source": "claude-drafted"}
+{"query": "We got a notice that old TLS versions are being retired — what do we need to change?", "expected_articles": ["storage-tls-migrate-to-tls2", "storage-tls-minimum-version"], "source": "claude-drafted"}
+{"query": "What permissions does the built-in Reader role actually grant?", "expected_articles": ["rbac-reader-role"], "expected_sections": ["reader"], "source": "claude-drafted"}
+{"query": "Should I assign Azure roles to individual users or to groups?", "expected_articles": ["rbac-best-practices"], "expected_sections": ["assign-roles-to-groups-not-users"], "source": "claude-drafted"}
+{"query": "What is a managed identity and when should I use one instead of a service principal?", "expected_articles": ["identity-managed-identities-overview"], "expected_sections": ["what-are-managed-identities"], "source": "claude-drafted"}
+{"query": "How can a GitHub Actions pipeline authenticate to Azure without storing a secret?", "expected_articles": ["identity-workload-identity-federation"], "expected_sections": ["why-use-workload-identity-federation"], "source": "claude-drafted"}
+{"query": "How do I make sure every resource has an owner tag so we can track cost accountability?", "expected_articles": ["tagging-tag-resources", "cost-mgt-best-practices"], "source": "claude-drafted"}
