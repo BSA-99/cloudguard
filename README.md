@@ -17,9 +17,13 @@ must approve.**
 | `find_weak_tls` | Storage accounts with minimum TLS below 1.2 or unset | KQL over `resources` |
 | `get_resource(id)` | One resource by ID, or not-found | KQL, ID validated first |
 | `search_docs(query)` | Public Microsoft Learn pages to cite | Keyword index (RAG on Day 3) |
+| `propose_lock(rg, reason)` | Writes a pending lock proposal for a human to approve | `proposals.jsonl`; **makes no Azure call** |
 
-Every tool is read-only, returns exact resource IDs, flags suspicious text in names/tags,
-and writes a line to `audit_log.jsonl`.
+Every tool is read-only against Azure, returns exact resource IDs, flags suspicious text in
+names/tags, and writes a line to `audit_log.jsonl`. `propose_lock` is the one tool that
+writes anything at all, and what it writes is a proposal record, never an ARM call — only
+for a resource group `list_unlocked_resource_groups` already confirmed unlocked in the same
+run. A human approves or rejects via `proposals.decide()`, which is deliberately not a tool.
 
 ## Quick start (no Azure account needed)
 
@@ -31,13 +35,29 @@ cloudguard --mock check     # score detectors against ground_truth.json
 cloudguard --mock tool get_resource --arg resource_id=/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cg-dev-sandbox
 ```
 
-## LLM client (Day 2, in progress)
+## Agent loop (Day 2)
 
 `src/cloudguard/llm.py` defines a provider-neutral `LLMClient` protocol. `FakeLLM` replays
 scripted responses, so tests and CI need no API key. `GeminiClient` (the live implementation,
 needs `pip install -e ".[agent]"`) reads `GEMINI_API_KEY` and `CLOUDGUARD_MODEL` from the
-environment or a local `.env`, never from the repo. The agent tool-calling loop itself lands
-later in Day 2 — see `docs/PLAN.md`.
+environment or a local `.env`, never from the repo.
+
+`src/cloudguard/agent.py` runs the tool-calling loop: every tool call goes through `TOOLS`
+(audit-logged), results come back to the model inside `<tool_result>` markers, and the run
+stops on a final answer or `max_steps`. After a final answer, `grounding.check_grounding`
+verifies every resource ID the model cited actually came from a tool result this run —
+if not, `grounding_ok=False` and the run counts as failed even though the model answered.
+`AgentRun.findings` holds the deduplicated, deterministic findings from this run's detector
+tools, independent of whatever the model's prose claims.
+
+```bash
+cloudguard --mock agent "audit this subscription"             # needs GEMINI_API_KEY / .env
+cloudguard --mock agent "audit this subscription" --max-steps 4
+```
+
+Prints findings (grouped by type, with untrusted-text warnings), the model's answer, the
+grounding verdict, any proposals created, and run stats (`run_id`, model, steps, tokens,
+attempts, latency). Exits non-zero if grounding failed or the run hit `max_steps`.
 
 ## The seeded sandbox and ground truth
 

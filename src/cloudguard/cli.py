@@ -6,6 +6,7 @@
   cloudguard --mock check                 # run all detectors, score against ground_truth.json
   cloudguard snapshot -o mock/live.json   # live only: record the subscription for mock mode
   cloudguard llm-ping                     # agent extra: one test call to Gemini
+  cloudguard --mock agent "audit this subscription" [--max-steps N]
 """
 
 from __future__ import annotations
@@ -16,9 +17,11 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
+from cloudguard.agent import AgentRun, DEFAULT_MAX_STEPS, run_agent
 from cloudguard.backends import MockBackend, ResourceGraphBackend
-from cloudguard.llm import GeminiClient
+from cloudguard.llm import GeminiClient, LLMClient
 from cloudguard.models import GroundTruth
 from cloudguard.tools import DETECTORS, REPO_ROOT, TOOL_SPECS, TOOLS
 
@@ -76,7 +79,70 @@ def cmd_llm_ping() -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def _print_agent_run(run: AgentRun, llm: LLMClient) -> None:
+    print("== Findings ==")
+    if not run.findings:
+        print("(none)")
+    else:
+        by_type: dict[str, list[Any]] = {}
+        for f in run.findings:
+            by_type.setdefault(f.type.value, []).append(f)
+        for type_name, findings in by_type.items():
+            print(f"\n{type_name} ({len(findings)})")
+            for f in findings:
+                flag = f"  !! untrusted text: {', '.join(f.untrusted_text_flags)}" if f.untrusted_text_flags else ""
+                print(f"  [{f.severity.value:6}] {f.resource_id}{flag}")
+
+    print("\n== Answer ==")
+    print(run.final_answer or "(no final answer — stopped at max_steps)")
+
+    print("\n== Grounding ==")
+    if run.grounding_ok is None:
+        print("not checked (no final answer)")
+    elif run.grounding_ok:
+        print("ok")
+    else:
+        print("FAILED")
+        for rid in run.ungrounded_ids:
+            print(f"  ungrounded: {rid}")
+
+    print("\n== Proposals ==")
+    seen_proposal_ids: set[str] = set()
+    for tc in run.tool_calls:
+        if tc["name"] != "propose_lock" or not tc["result"].ok:
+            continue
+        proposal = tc["result"].data
+        if proposal["proposal_id"] in seen_proposal_ids:
+            continue
+        seen_proposal_ids.add(proposal["proposal_id"])
+        print(f"  [{proposal['status']:9}] {proposal['resource_group_id']}")
+        print(f"      {proposal['suggested_command']}")
+    if not seen_proposal_ids:
+        print("(none)")
+
+    print("\n== Run stats ==")
+    print(f"run_id: {run.run_id}")
+    print(f"model: {getattr(llm, 'model', llm.name)}")
+    print(f"steps: {run.steps}")
+    print(f"stopped_reason: {run.stopped_reason}")
+    print(f"tokens: {run.total_input_tokens} in / {run.total_output_tokens} out")
+    print(f"attempts: {run.total_attempts}")
+    print(f"latency_ms: {run.total_latency_ms:.0f}")
+
+
+def cmd_agent(args: argparse.Namespace, backend, llm: LLMClient | None = None) -> int:
+    if llm is None:
+        try:
+            llm = GeminiClient()
+        except RuntimeError as e:
+            sys.exit(str(e))
+
+    run = run_agent(llm, backend, args.message, max_steps=args.max_steps)
+    _print_agent_run(run, llm)
+    return 1 if (run.grounding_ok is False or run.stopped_reason == "max_steps") else 0
+
+
+def main(argv: list[str] | None = None, llm: LLMClient | None = None) -> int:
     p = argparse.ArgumentParser(prog="cloudguard")
     p.add_argument("--mock", action="store_true", default=os.environ.get("CLOUDGUARD_MODE") == "mock",
                    help="read from a saved JSON snapshot instead of Azure")
@@ -97,6 +163,10 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("llm-ping", help="send one test message to Gemini and print how it responded")
 
+    ag = sub.add_parser("agent", help="run the tool-calling agent loop")
+    ag.add_argument("message")
+    ag.add_argument("--max-steps", type=int, default=DEFAULT_MAX_STEPS)
+
     args = p.parse_args(argv)
 
     if args.cmd == "llm-ping":
@@ -111,6 +181,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     backend = make_backend(args)
+
+    if args.cmd == "agent":
+        return cmd_agent(args, backend, llm=llm)
 
     if args.cmd == "tool":
         kwargs = dict(a.split("=", 1) for a in args.arg)

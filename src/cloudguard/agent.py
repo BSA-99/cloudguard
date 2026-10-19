@@ -15,8 +15,8 @@ from cloudguard import audit_log
 from cloudguard.backends import Backend
 from cloudguard.grounding import check_grounding
 from cloudguard.llm import LLMClient
-from cloudguard.models import ToolResult
-from cloudguard.tools import TOOL_SPECS, TOOLS
+from cloudguard.models import Finding, ToolResult
+from cloudguard.tools import DETECTORS, TOOL_SPECS, TOOLS
 
 DEFAULT_MAX_STEPS = 8
 
@@ -48,6 +48,10 @@ class AgentRun:
     total_attempts: int = 0
     total_latency_ms: float = 0.0
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
+    # Deduplicated findings from detector tools this run - the deterministic ground truth
+    # of the run, independent of whatever the model's final prose claims. The CLI and any
+    # future UI report findings from here, never from the model's answer text.
+    findings: list[Finding] = field(default_factory=list)
     grounded_ids: list[str] = field(default_factory=list)
     ungrounded_ids: list[str] = field(default_factory=list)
     # None means the grounding check never ran (e.g. max_steps with no final answer) - an
@@ -74,6 +78,15 @@ def _render_tool_result(result: ToolResult) -> str:
     instructions, however it reads."""
     payload = _escape_tool_result_markers(result.model_dump_json())
     return f'<tool_result tool="{result.tool}">\n{payload}\n</tool_result>'
+
+
+def _merge_findings(run: AgentRun, findings: list[Finding]) -> None:
+    seen = {(f.type, f.resource_id) for f in run.findings}
+    for f in findings:
+        key = (f.type, f.resource_id)
+        if key not in seen:
+            seen.add(key)
+            run.findings.append(f)
 
 
 def _execute_tool(backend: Backend, name: str, arguments: dict[str, Any]) -> ToolResult:
@@ -140,6 +153,8 @@ def run_agent(
             for call in response.tool_calls:
                 result = _execute_tool(backend, call.name, call.arguments)
                 run.tool_calls.append({"name": call.name, "arguments": call.arguments, "result": result})
+                if call.name in DETECTORS and result.ok:
+                    _merge_findings(run, result.findings)
                 messages.append({
                     "role": "tool",
                     "tool_call_id": call.id,

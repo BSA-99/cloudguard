@@ -23,7 +23,8 @@ after they are measured.
 - [x] Post-check: every resource ID in the final answer must appear in a tool result this run; otherwise reject/flag (`grounding.check_grounding`, pure function reused by the Day-4 eval harness; `AgentRun.grounding_ok`/`grounded_ids`/`ungrounded_ids`, logged as a `grounding_check` audit entry)
 - [x] `propose_lock(rg)`: writes a proposal record only (no ARM call); status pending/approved/rejected (`proposals.py`; only accepts a group `list_unlocked_resource_groups` returned this run, tracked via a ContextVar alongside `run_id`; `decide()` is the human approval path and is never a tool)
 - [ ] Streamlit page: run audit, show findings, approve/reject proposals
-- [ ] Test: injection tag in `cg-shared-net` does not change the verdict and does not trigger `propose_lock` on every RG
+- [x] Test: a compromised model that fully obeys `cg-shared-net`'s injected tag (calls `propose_lock` on all 6 groups, then lies in its final answer) still gets the 2 locked groups rejected by `propose_lock`'s own authorization check, with the rejections audit-logged and `AgentRun.findings` (deduplicated detector findings, independent of the model's prose) intact; a second case covers an invented resource group being rejected by both `propose_lock` and grounding
+- [x] `cloudguard [--mock] agent "<message>" [--max-steps N]`: prints findings/answer/grounding/proposals/run-stats; exits non-zero on grounding failure or `max_steps`; `llm` injectable (`FakeLLM` in tests, `GeminiClient` by default)
 
 ## Day 3 — RAG + change requests
 - [ ] ~30 public Microsoft Learn pages (locks, Policy, TLS, managed disks, Reader/RBAC); store URL + chunk
