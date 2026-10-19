@@ -99,6 +99,62 @@ def test_mixed_text_and_function_call_parts_extracted_without_sdk_warning(monkey
     assert caplog.records == []
 
 
+def test_system_role_message_becomes_system_instruction_not_a_content_turn(monkeypatch):
+    """Gemini has no "system" Content role; agent.py's SYSTEM_PROMPT must end up as
+    config.system_instruction, and must not appear in `contents` at all."""
+    client = GeminiClient(api_key="fake")
+    captured = {}
+
+    def fake_generate_content(**kwargs):
+        captured.update(kwargs)
+        return _fake_success()
+
+    monkeypatch.setattr(client._client.models, "generate_content", fake_generate_content)
+
+    client.generate(
+        [{"role": "system", "content": "be a good auditor"}, {"role": "user", "content": "hi"}], [],
+    )
+
+    assert captured["config"].system_instruction == "be a good auditor"
+    assert len(captured["contents"]) == 1
+    assert captured["contents"][0].role == "user"
+
+
+def test_tool_result_becomes_a_function_response_part_matched_by_id(monkeypatch):
+    """Tool results must reach Gemini as a function_response Part correlated to the
+    function_call that produced it via a shared id, never as plain user-role text - that's
+    what lets Gemini (and the model) tell "data returned by a tool I called" apart from
+    "a new instruction from the user", independent of what the data block's text says."""
+    client = GeminiClient(api_key="fake")
+    captured = {}
+    monkeypatch.setattr(client._client.models, "generate_content",
+                         lambda **kwargs: captured.update(kwargs) or _fake_success())
+
+    messages = [
+        {"role": "user", "content": "check disks"},
+        {"role": "assistant", "content": None, "tool_calls": [
+            {"id": "call_1", "name": "list_unattached_disks", "arguments": {}},
+        ]},
+        {"role": "tool", "tool_call_id": "call_1", "name": "list_unattached_disks",
+         "content": "<tool_result tool=\"list_unattached_disks\">...</tool_result>"},
+    ]
+    client.generate(messages, [])
+
+    contents = captured["contents"]
+    assistant_content, tool_content = contents[1], contents[2]
+
+    call_part = assistant_content.parts[0].function_call
+    assert assistant_content.role == "model"
+    assert call_part.id == "call_1"
+
+    assert tool_content.role == "function"  # never "user"
+    response_part = tool_content.parts[0].function_response
+    assert response_part is not None
+    assert tool_content.parts[0].text is None  # not plain text
+    assert response_part.id == call_part.id == "call_1"  # matched to the call that produced it
+    assert response_part.name == "list_unattached_disks"
+
+
 def test_non_retryable_error_is_not_retried(monkeypatch):
     client = GeminiClient(api_key="fake", max_retries=3)
     monkeypatch.setattr("cloudguard.llm.time.sleep", lambda s: None)

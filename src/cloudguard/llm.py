@@ -2,6 +2,7 @@
 
 Messages are a plain list of dicts so no provider's SDK types leak into agent.py:
 
+    {"role": "system", "content": "..."}   # at most one, first in the list by convention
     {"role": "user", "content": "..."}
     {"role": "assistant", "content": "...", "tool_calls": [{"id": ..., "name": ..., "arguments": {...}}]}
     {"role": "tool", "tool_call_id": "...", "name": "...", "content": "..."}   # JSON-stringified result
@@ -120,17 +121,24 @@ class GeminiClient:
             raise RuntimeError("GEMINI_API_KEY is not set (env var or .env file)")
 
         self._genai = genai
-        self.model = model or os.environ.get("CLOUDGUARD_MODEL", "gemini-2.0-flash")
+        self.model = model or os.environ.get("CLOUDGUARD_MODEL", "gemini-3.5-flash-lite")
         self.max_retries = max_retries
         self._client = genai.Client(api_key=key)
 
     def generate(self, messages: list[dict[str, Any]], tool_specs: list[dict[str, Any]]) -> LLMResponse:
         types = self._genai.types
-        contents = [_to_gemini_content(types, m) for m in messages]
-        config = None
+        # Gemini has no "system" turn in contents; a system prompt is a separate config
+        # field instead, so system-role messages are pulled out rather than converted.
+        system_texts = [m["content"] for m in messages if m["role"] == "system"]
+        contents = [_to_gemini_content(types, m) for m in messages if m["role"] != "system"]
+
+        config_kwargs: dict[str, Any] = {}
         if tool_specs:
             declarations = tool_specs_to_gemini(tool_specs)
-            config = types.GenerateContentConfig(tools=[types.Tool(function_declarations=declarations)])
+            config_kwargs["tools"] = [types.Tool(function_declarations=declarations)]
+        if system_texts:
+            config_kwargs["system_instruction"] = "\n\n".join(system_texts)
+        config = types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
 
         response, attempts = self._call_with_retry(contents, config)
         return _from_gemini_response(response, attempts)

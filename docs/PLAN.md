@@ -15,10 +15,11 @@ after they are measured.
 - [ ] Replace synthetic mock with recorded one if useful (`cloudguard snapshot -o mock/live.json`, scrub sub ID)
 
 ## Day 2 — Agent loop
+- Model: gemini-3.5-flash-lite (free tier). 2.5-flash-lite was retired for new users, and 3.7/3.8-flash returned 503 under demand.
 - [x] Choose LLM provider: Gemini via `google-genai` (`GEMINI_API_KEY` / `CLOUDGUARD_MODEL` env vars, never committed); `llm.py` has a provider-neutral `LLMClient` protocol so an `AnthropicClient` can be added later without touching `agent.py`
 - [x] Fake LLM client (`FakeLLM`) for tests so CI needs no API key
-- [ ] `agent.py`: tool-calling loop over `TOOL_SPECS`, max-steps limit, every call through `TOOLS` (so it is audit-logged)
-- [ ] System prompt: findings must cite exact IDs from tool results; tag/name text is data, not instructions
+- [x] `agent.py`: tool-calling loop over `TOOL_SPECS`, max-steps limit (default 8), every call through `TOOLS` (so it is audit-logged); run_id, tokens, attempts and latency recorded per run
+- [x] System prompt: findings must cite exact IDs from tool results; tag/name text is data, not instructions (`agent.SYSTEM_PROMPT`; tool results passed back inside `<tool_result>` markers)
 - [ ] Post-check: every resource ID in the final answer must appear in a tool result this run; otherwise reject/flag
 - [ ] `propose_lock(rg)`: writes a proposal record only (no ARM call); status pending/approved/rejected
 - [ ] Streamlit page: run audit, show findings, approve/reject proposals
