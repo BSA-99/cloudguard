@@ -35,6 +35,7 @@ def test_fake_llm_response_defaults():
     r = LLMResponse(text="hi")
     assert r.tool_calls == []
     assert r.usage == Usage(0, 0)
+    assert r.attempts == 1
 
 
 def test_tool_specs_to_gemini_converts_every_real_tool():

@@ -71,7 +71,8 @@ def cmd_llm_ping() -> int:
     for call in response.tool_calls:
         print(f"tool_call: {call.name}({call.arguments})")
     print(f"usage: input_tokens={response.usage.input_tokens} output_tokens={response.usage.output_tokens}")
-    print(f"latency_ms: {latency_ms:.0f}")
+    print(f"attempts: {response.attempts}")
+    print(f"latency_ms: {latency_ms:.0f} total, {latency_ms / response.attempts:.0f} per attempt")
     return 0
 
 

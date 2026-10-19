@@ -38,6 +38,7 @@ class LLMResponse:
     text: str | None
     tool_calls: list[ToolCall] = field(default_factory=list)
     usage: Usage = field(default_factory=lambda: Usage(0, 0))
+    attempts: int = 1  # how many calls generate_content() took, including retries
     raw: Any = None  # the provider's native response, for logging/debugging only
 
 
@@ -131,17 +132,18 @@ class GeminiClient:
             declarations = tool_specs_to_gemini(tool_specs)
             config = types.GenerateContentConfig(tools=[types.Tool(function_declarations=declarations)])
 
-        response = self._call_with_retry(contents, config)
-        return _from_gemini_response(response)
+        response, attempts = self._call_with_retry(contents, config)
+        return _from_gemini_response(response, attempts)
 
-    def _call_with_retry(self, contents: list[Any], config: Any) -> Any:
+    def _call_with_retry(self, contents: list[Any], config: Any) -> tuple[Any, int]:
         from google.genai import errors
 
         delay = 1.0
         last_error: Any = None
         for attempt in range(self.max_retries):
             try:
-                return self._client.models.generate_content(model=self.model, contents=contents, config=config)
+                response = self._client.models.generate_content(model=self.model, contents=contents, config=config)
+                return response, attempt + 1
             except errors.APIError as e:
                 if e.code not in _RETRYABLE_CODES:
                     raise
@@ -176,19 +178,32 @@ def _to_gemini_content(types: Any, message: dict[str, Any]) -> Any:
     raise ValueError(f"unknown message role: {role!r}")
 
 
-def _from_gemini_response(response: Any) -> LLMResponse:
-    tool_calls = [
-        ToolCall(id=fc.id or f"call_{i}", name=fc.name, arguments=fc.args or {})
-        for i, fc in enumerate(response.function_calls or [])
-    ]
+def _from_gemini_response(response: Any, attempts: int) -> LLMResponse:
+    # Read candidates[0].content.parts directly rather than response.text /
+    # response.function_calls: both of those log a warning whenever a function_call part is
+    # present (which is every tool-calling turn), even though that's expected, not an error.
+    parts = []
+    if response.candidates and response.candidates[0].content:
+        parts = response.candidates[0].content.parts or []
+
+    text_chunks = []
+    tool_calls = []
+    for i, part in enumerate(parts):
+        if part.function_call is not None:
+            fc = part.function_call
+            tool_calls.append(ToolCall(id=fc.id or f"call_{i}", name=fc.name, arguments=fc.args or {}))
+        elif part.text is not None:
+            text_chunks.append(part.text)
+
     usage = response.usage_metadata
     return LLMResponse(
-        text=response.text,
+        text="".join(text_chunks) or None,
         tool_calls=tool_calls,
         usage=Usage(
             input_tokens=(usage.prompt_token_count or 0) if usage else 0,
             output_tokens=(usage.candidates_token_count or 0) if usage else 0,
         ),
+        attempts=attempts,
         raw=response,
     )
 

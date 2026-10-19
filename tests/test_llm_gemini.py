@@ -59,6 +59,7 @@ def test_retries_transient_errors_then_succeeds(monkeypatch, code, status):
 
     assert response.text == "ok"
     assert calls["n"] == 3
+    assert response.attempts == 3
 
 
 def test_raises_clear_error_after_exhausting_retries(monkeypatch):
@@ -72,6 +73,30 @@ def test_raises_clear_error_after_exhausting_retries(monkeypatch):
 
     with pytest.raises(RuntimeError, match=r"failed after 3 attempts.*503 UNAVAILABLE"):
         client.generate([{"role": "user", "content": "hi"}], [])
+
+
+def test_mixed_text_and_function_call_parts_extracted_without_sdk_warning(monkeypatch, caplog):
+    """response.text / response.function_calls each log a warning whenever a function_call
+    part is present. generate() must read candidates[0].content.parts directly instead, so
+    tool-calling turns (which always mix a function_call part in) never trigger that log."""
+    client = GeminiClient(api_key="fake", max_retries=3)
+
+    mixed = types.GenerateContentResponse(
+        candidates=[types.Candidate(content=types.Content(role="model", parts=[
+            types.Part(text="looking into it"),
+            types.Part(function_call=types.FunctionCall(id="c1", name="list_unattached_disks", args={})),
+        ]))],
+        usage_metadata=types.GenerateContentResponseUsageMetadata(prompt_token_count=1, candidates_token_count=1),
+    )
+    monkeypatch.setattr(client._client.models, "generate_content", lambda **kwargs: mixed)
+
+    with caplog.at_level("WARNING"):
+        response = client.generate([{"role": "user", "content": "hi"}], [])
+
+    assert response.text == "looking into it"
+    assert len(response.tool_calls) == 1
+    assert response.tool_calls[0].name == "list_unattached_disks"
+    assert caplog.records == []
 
 
 def test_non_retryable_error_is_not_retried(monkeypatch):
