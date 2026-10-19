@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from cloudguard import sandbox, tools
+from cloudguard import sandbox
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = sandbox.load_spec(ROOT / "sandbox" / "seed_spec.json")
@@ -31,14 +31,3 @@ def test_rg_locks_are_created_after_resources():
 def test_ground_truth_drops_weak_tls_if_azure_refused_it():
     gt = sandbox.build_ground_truth(SPEC, sandbox.PLACEHOLDER_SUB, weak_tls_seeded=False)
     assert not any(i["type"] == "weak_tls" for i in gt["expected_findings"])
-
-
-def test_search_docs_finds_lock_guidance(backend):
-    r = tools.search_docs(backend, query="how do I lock a resource group")
-    assert r.ok and r.data["results"]
-    assert "lock-resources" in r.data["results"][0]["url"]
-
-
-def test_search_docs_every_result_has_a_microsoft_url(backend):
-    r = tools.search_docs(backend, query="tls storage disk policy reader", k=10)
-    assert all(h["url"].startswith("https://learn.microsoft.com/") for h in r.data["results"])

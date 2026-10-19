@@ -19,15 +19,15 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable
 
-from cloudguard import audit_log, docs_search
+from cloudguard import audit_log
 from cloudguard.backends import Backend, InvalidResourceId
 from cloudguard.models import Finding, FindingType, Severity, ToolResult
 from cloudguard.proposals import ProposalRejected
 from cloudguard.proposals import propose_lock as _propose_lock_impl
+from cloudguard.rag import index as rag_index
 from cloudguard.untrusted import scan_fields
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CORPUS_PATH = REPO_ROOT / "docs" / "corpus.json"
 
 
 def _audited(tool_name: str) -> Callable:
@@ -130,11 +130,21 @@ def get_resource(backend: Backend, resource_id: str) -> ToolResult:
                       data=row | {"_untrusted_text_flags": flags})
 
 
+SNIPPET_LENGTH = 600
+
+
 @_audited("search_docs")
 def search_docs(backend: Backend, query: str, k: int = 3) -> ToolResult:
-    hits = docs_search.search(CORPUS_PATH, query, k=k)
+    hits = rag_index.search_default(query, k=k)
+    results = [
+        {
+            "chunk_id": h.chunk_id, "title": h.title, "heading": h.heading,
+            "url": h.url, "snippet": h.text[:SNIPPET_LENGTH], "score": h.score,
+        }
+        for h in hits
+    ]
     return ToolResult(tool="search_docs", ok=True, backend=backend.name,
-                      data={"query": query, "results": hits}, count=len(hits))
+                      data={"query": query, "results": results}, count=len(results))
 
 
 # propose_lock is defined in proposals.py as a plain function (so that module never depends

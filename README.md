@@ -17,7 +17,7 @@ must approve.**
 | `list_unattached_disks` | Managed disks in the `Unattached` state | KQL over `resources` |
 | `find_weak_tls` | Storage accounts with minimum TLS below 1.2 or unset | KQL over `resources` |
 | `get_resource(id)` | One resource by ID, or not-found | KQL, ID validated first |
-| `search_docs(query)` | Public Microsoft Learn pages to cite | Keyword index (RAG on Day 3) |
+| `search_docs(query)` | Chunks of public Microsoft Learn pages to cite, with URL + score | Embedding search over `corpus/index/` |
 | `propose_lock(rg, reason)` | Writes a pending lock proposal for a human to approve | `proposals.jsonl`; **makes no Azure call** |
 
 Every tool is read-only against Azure, returns exact resource IDs, flags suspicious text in
@@ -150,7 +150,48 @@ pinning a fifth repo for them. The one known, pre-existing exception is listed i
 manifest's `known_issues`: `disks-types.md` references an include with the wrong case
 (`...-GA-...` vs. the real lowercase `...-ga-...` filename) — an upstream bug in
 `azure-compute-docs`, confirmed by listing the real file tree, not guessed. The fetch script
-reports it as a failed path and exits non-zero; it does not skip it silently.
+reports this as `KNOWN` (not `FAILED`) and still exits 0; any *other* 404 prints `FAILED` and
+exits 1, and if this known issue ever starts succeeding (Microsoft fixes the casing), the
+script prints a notice to remove the now-stale `known_issues` entry.
+
+### RAG index
+
+`src/cloudguard/rag/` turns `corpus/raw/` into a searchable index:
+
+- **`chunk.py`** strips YAML front-matter (keeping `title`/`ms.date`), splices each
+  `[!INCLUDE]` inline from `corpus/raw/includes/`, rewrites relative markdown links
+  (`[text](../other/page.md#anchor)`) to absolute Learn URLs resolved against the article's
+  own `learn_url` — an image link becomes just its alt text, anything else unresolvable
+  (a relative link to a non-`.md` asset) becomes just its link text — then drops DocFX syntax
+  with no retrieval value (`:::zone:::`/`:::image:::`/tab-group markers become nothing;
+  `> [!NOTE]` becomes plain text; boilerplate trailer sections like "Next steps" are always
+  dropped), and splits by H2/H3 heading into 180–320-word chunks with a small overlap —
+  never inside a fenced code block. bge-small-en-v1.5 truncates at 512 tokens (~384 words),
+  so that range leaves headroom for the `"{title} > {heading}"` context line prefixed onto
+  the chunk before embedding (the stored/returned chunk text itself stays bare, for
+  snippets). A chunk still over 380 words after normal packing is split further at a
+  paragraph (or, failing that, a top-level list-item) boundary — unless it's a table or a
+  fenced code block, which are left whole; `cloudguard build-index` prints the `chunk_id`
+  and word count of anything still over the limit afterward. Each chunk's `chunk_id` is
+  built from the article id and its *full* heading path, so two sections with the same
+  subheading (e.g. two "Azure CLI" tabs under different H2s) never collide.
+- **`embed.py`**: an `Embedder` protocol, `FastEmbedder` (fastembed, model from
+  `CLOUDGUARD_EMBED_MODEL`, default `BAAI/bge-small-en-v1.5`, lazily imported so mock-mode
+  tests never need it), and a deterministic `FakeEmbedder` (hashed bag-of-words) for tests.
+- **`index.py`**: `build_index()` writes `corpus/index/{vectors.npy, chunks.jsonl,
+  meta.json}` (`meta.json` records the manifest's hash and the embedding model name);
+  `search()` cosine-ranks and caps results at 2 chunks per article, so one long page can't
+  dominate. Loading an index whose manifest or model no longer matches `meta.json` raises
+  `StaleIndexError` ("run `cloudguard build-index`") instead of silently searching stale data.
+
+```bash
+pip install -e ".[agent]"
+cloudguard build-index     # rebuild corpus/index/ after editing the corpus or changing CLOUDGUARD_EMBED_MODEL
+```
+
+`corpus/index/` is committed (small — a few hundred KB) so CI and Streamlit work without
+rebuilding it. `search_docs` keeps the same tool name, arguments, and audit logging; each
+result is `{chunk_id, title, heading, url, snippet (~600 chars), score}`.
 
 ## NOTICE — third-party content
 

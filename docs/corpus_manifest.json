@@ -181,7 +181,7 @@
     {
       "id": "rbac-reader-role",
       "title": "Azure built-in roles for General - Azure RBAC",
-      "learn_url": "https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/general#reader",
+      "learn_url": "https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/general",
       "repo": "MicrosoftDocs/azure-docs",
       "source_path": "articles/role-based-access-control/built-in-roles/general.md",
       "topic": "rbac"

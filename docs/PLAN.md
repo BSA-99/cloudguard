@@ -32,7 +32,15 @@ after they are measured.
       `scripts/fetch_corpus.py` fetches articles + one level of includes from raw.githubusercontent.com (no
       clone), fails loudly on any 404, never silently; every path/URL/title verified live, not from memory;
       `corpus/raw/` committed (~420 KB); README NOTICE section names repo/license/pinned commit
-- [ ] Embeddings + Chroma (or numpy cosine); `search_docs` keeps the same signature
+- [x] `src/cloudguard/rag/`: `chunk.py` strips front-matter/DocFX syntax, splices includes, splits by
+      H2/H3 into 180-320-word chunks (never inside a fenced code block) with small overlap; `embed.py`
+      (`FastEmbedder`/fastembed, `FakeEmbedder` for tests); `index.py` (`build_index`/`search`, numpy
+      cosine, stale-index check on manifest hash + model name, 2-chunks-per-article cap). `search_docs`
+      keeps the same name/args/audit-logging; `cloudguard build-index` added; Day-1 keyword index removed.
+      Follow-up: relative markdown links rewritten to absolute Learn URLs (images/unresolvable links become
+      plain text); oversized (>380-word) chunks that aren't a table/code block are split further at a
+      paragraph or list-item boundary, with remaining ones (genuine tables, or a boundary-less nested list)
+      printed by `build-index`
 - [ ] Change-request draft: summary, risk, rollback, test plan, citations (URLs from retrieval only)
 
 ## Day 4 — Evals

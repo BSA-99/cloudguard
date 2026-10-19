@@ -10,6 +10,9 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.6",
+    # rag/index.py and FakeEmbedder need this unconditionally (mock mode included); only
+    # the real FastEmbedder below needs the `agent` extra.
+    "numpy>=1.26",
 ]
 
 [project.optional-dependencies]
@@ -30,6 +33,7 @@ agent = [
     "google-genai>=1.0",
     "python-dotenv>=1.0",
     "streamlit>=1.30",
+    "fastembed>=0.3",
 ]
 
 [project.scripts]

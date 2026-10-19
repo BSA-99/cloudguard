@@ -7,6 +7,7 @@
   cloudguard snapshot -o mock/live.json   # live only: record the subscription for mock mode
   cloudguard llm-ping                     # agent extra: one test call to Gemini
   cloudguard --mock agent "audit this subscription" [--max-steps N]
+  cloudguard build-index                  # agent extra: embed the RAG corpus into corpus/index/
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from cloudguard.agent import AgentRun, DEFAULT_MAX_STEPS, run_agent
 from cloudguard.backends import MockBackend, ResourceGraphBackend
 from cloudguard.llm import GeminiClient, LLMClient, LLMError
 from cloudguard.models import GroundTruth
+from cloudguard.rag import index as rag_index
 from cloudguard.tools import DETECTORS, REPO_ROOT, TOOL_SPECS, TOOLS
 
 DEFAULT_SNAPSHOT = REPO_ROOT / "mock" / "subscription_snapshot.json"
@@ -151,6 +153,26 @@ def cmd_agent(args: argparse.Namespace, backend, llm: LLMClient | None = None) -
     return 1 if (run.grounding_ok is False or run.stopped_reason == "max_steps") else 0
 
 
+def cmd_build_index(args: argparse.Namespace) -> int:
+    from cloudguard.rag.embed import FastEmbedder
+    from cloudguard.rag.index import build_index
+
+    embedder = FastEmbedder(model_name=args.embed_model)
+    result = build_index(args.manifest, args.raw_dir, embedder, args.out_dir)
+
+    print(f"model: {result['model_name']}")
+    print(f"chunks: {result['chunk_count']}")
+    print(f"built_at: {result['built_at']}")
+    over_warn = result["over_warn_chunks"]
+    if over_warn:
+        for c in over_warn:
+            print(f"OVER {result['warn_limit_words']} WORDS: {c['chunk_id']} ({c['word_count']} words)")
+        print(f"WARNING: {len(over_warn)} chunk(s) exceed "
+              f"{result['warn_limit_words']} words - close to {embedder.name}'s truncation point")
+    print(f"wrote {args.out_dir}")
+    return 0
+
+
 def main(argv: list[str] | None = None, llm: LLMClient | None = None) -> int:
     p = argparse.ArgumentParser(prog="cloudguard")
     p.add_argument("--mock", action="store_true", default=os.environ.get("CLOUDGUARD_MODE") == "mock",
@@ -176,10 +198,19 @@ def main(argv: list[str] | None = None, llm: LLMClient | None = None) -> int:
     ag.add_argument("message")
     ag.add_argument("--max-steps", type=int, default=DEFAULT_MAX_STEPS)
 
+    bi = sub.add_parser("build-index", help="embed docs/corpus_manifest.json's corpus into corpus/index/")
+    bi.add_argument("--manifest", type=Path, default=rag_index.DEFAULT_MANIFEST_PATH)
+    bi.add_argument("--raw-dir", type=Path, default=rag_index.DEFAULT_RAW_DIR)
+    bi.add_argument("--out-dir", type=Path, default=rag_index.DEFAULT_INDEX_DIR)
+    bi.add_argument("--embed-model", default=None, help="defaults to CLOUDGUARD_EMBED_MODEL or bge-small-en-v1.5")
+
     args = p.parse_args(argv)
 
     if args.cmd == "llm-ping":
         return cmd_llm_ping()
+
+    if args.cmd == "build-index":
+        return cmd_build_index(args)
 
     if args.cmd == "snapshot":
         if args.mock:
