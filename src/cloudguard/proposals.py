@@ -58,16 +58,24 @@ def _read_events() -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+def list_proposals() -> list[dict[str, Any]]:
+    """Every proposal's current state, replayed from its events, in first-created order.
+    The UI reads this fresh on every render, so decisions persist across restarts."""
+    order: list[str] = []
+    by_id: dict[str, dict[str, Any]] = {}
+    for e in _read_events():
+        pid = e["proposal_id"]
+        if pid not in by_id:
+            order.append(pid)
+            by_id[pid] = {}
+        by_id[pid].update({k: v for k, v in e.items() if k != "event"})
+    return [by_id[pid] for pid in order]
+
+
 def get_proposal(proposal_id: str) -> dict[str, Any] | None:
     """Replays every event for this proposal_id, in order. The `created` event supplies the
     base record; a later `decided` event overlays status/decided_by/decided_at/note."""
-    events = [e for e in _read_events() if e.get("proposal_id") == proposal_id]
-    if not events:
-        return None
-    proposal = {k: v for k, v in events[0].items() if k != "event"}
-    for e in events[1:]:
-        proposal.update({k: v for k, v in e.items() if k != "event"})
-    return proposal
+    return next((p for p in list_proposals() if p["proposal_id"] == proposal_id), None)
 
 
 def _find_existing_proposal_this_run(run_id: str | None, resource_group_id: str) -> dict[str, Any] | None:
@@ -86,11 +94,12 @@ def _suggested_command(resource_group_id: str) -> str:
     return f"az lock create -n cg-proposed-lock -t {LOCK_LEVEL} -g {quoted_name}  # proposal only — not executed"
 
 
-def _create_proposal(run_id: str | None, resource_group_id: str, reason: str) -> dict[str, Any]:
+def _create_proposal(run_id: str | None, resource_group_id: str, reason: str, backend_name: str) -> dict[str, Any]:
     event = {
         "event": "created",
         "proposal_id": str(uuid.uuid4()),
         "run_id": run_id,
+        "backend": backend_name,
         "resource_group_id": resource_group_id,
         "lock_level": LOCK_LEVEL,
         # The reason is model-authored free text - untrusted, stored verbatim, flagged.
@@ -123,13 +132,15 @@ def propose_lock(backend: Backend, resource_group_id: str, reason: str) -> ToolR
 
     run_id = audit_log.current_run_id()
     existing = _find_existing_proposal_this_run(run_id, rg_id)
-    proposal = existing if existing is not None else _create_proposal(run_id, rg_id, reason)
+    proposal = existing if existing is not None else _create_proposal(run_id, rg_id, reason, backend.name)
     return ToolResult(tool="propose_lock", ok=True, backend=backend.name, count=1, data=proposal)
 
 
 def decide(proposal_id: str, decision: str, decided_by: str, note: str = "") -> dict[str, Any]:
     if decision not in ("approved", "rejected"):
         raise ValueError(f"decision must be 'approved' or 'rejected', got {decision!r}")
+    if not decided_by or not decided_by.strip():
+        raise ValueError("decided_by is required")
 
     current = get_proposal(proposal_id)
     if current is None:

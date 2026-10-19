@@ -4,9 +4,10 @@
 explains each finding with citations to Microsoft docs, and drafts a change request a human
 must approve.**
 
-> Status: **Day 1 of 7** — sandbox, ground truth and read-only Resource Graph tools with a
-> mock mode. The LLM agent loop lands on Day 2. Eval results will be published here only
-> once they are measured.
+> Status: **Day 2 of 7** — sandbox, read-only tools, the Gemini tool-calling agent loop
+> (grounding check, `propose_lock`, human approval), and a Streamlit UI over it. RAG and
+> change-request drafts land on Day 3. Eval numbers will be published here only once
+> they're measured.
 
 ## What works today
 
@@ -58,6 +59,27 @@ cloudguard --mock agent "audit this subscription" --max-steps 4
 Prints findings (grouped by type, with untrusted-text warnings), the model's answer, the
 grounding verdict, any proposals created, and run stats (`run_id`, model, steps, tokens,
 attempts, latency). Exits non-zero if grounding failed or the run hit `max_steps`.
+
+### Streamlit UI
+
+```bash
+pip install -e ".[agent]"
+streamlit run app/streamlit_app.py
+```
+
+Sidebar: mock/live toggle, max steps, the request text, a "Run audit" button, and the
+active model name. The run only happens on that click — Streamlit reruns the whole script
+on every interaction, so the `AgentRun` lives in `st.session_state` and approving or
+rejecting a proposal never calls the LLM again. Findings, the answer, the grounding banner,
+and pending/decided proposals (read fresh from `proposals.jsonl` on every render, so
+decisions survive a restart) follow the same rule as the CLI: anything that came from Azure
+data, the model, or a human-entered reason/note renders as plain text or a code block
+(`st.text`/`st.code`), never `st.markdown`, so it can't be misread as formatting or acted on.
+All of that shaping lives in `app/view.py` as plain, independently unit-tested functions —
+`app/streamlit_app.py` itself only wires widgets to it.
+
+"Decided by" is a free-text field in this version — it's self-asserted, not authenticated.
+A deployed version would gate approval behind Entra ID sign-in instead.
 
 ## The seeded sandbox and ground truth
 
@@ -119,7 +141,7 @@ TLS1_2 regardless.
 ## Roadmap
 
 1. ✅ Sandbox, ground truth, read-only tools, mock mode, CI
-2. Agent tool-calling loop, `propose_lock`, approval in Streamlit, injection test
+2. ✅ Agent tool-calling loop, `propose_lock`, approval in Streamlit, injection test
 3. RAG over ~30 Microsoft Learn pages, change-request drafts with citations
 4. Eval harness: precision/recall, tool selection, hallucinated IDs, retrieval hit rate, cost, latency
 5. Terraform + GitHub Actions OIDC deploy to Azure Container Apps

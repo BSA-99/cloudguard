@@ -114,6 +114,10 @@ def tool_specs_to_gemini(tool_specs: list[dict[str, Any]]) -> list[dict[str, Any
 # Anything else (bad request, auth failure, ...) is never retried.
 _RETRYABLE_CODES = (429, 503)
 
+# free tier. 2.5-flash-lite was retired for new users; 3.7/3.8-flash returned 503 under
+# demand. Also the sidebar's fallback display when CLOUDGUARD_MODEL isn't set.
+DEFAULT_MODEL = "gemini-3.5-flash-lite"
+
 
 class GeminiClient:
     """Live mode: calls Gemini through the google-genai SDK.
@@ -122,8 +126,8 @@ class GeminiClient:
     from a local .env via python-dotenv). Both google-genai and python-dotenv are imported
     lazily, inside __init__, so mock-mode tests and CI never need the `agent` extra.
 
-    Retries 429 and 503 with exponential backoff, up to max_retries attempts, then raises a
-    RuntimeError naming the attempt count and the last error instead of retrying forever.
+    Retries 429 and 503 with exponential backoff, up to max_retries attempts, then raises an
+    LLMError naming the status/message/model instead of retrying forever.
     """
 
     name = "gemini"
@@ -138,7 +142,7 @@ class GeminiClient:
             raise RuntimeError("GEMINI_API_KEY is not set (env var or .env file)")
 
         self._genai = genai
-        self.model = model or os.environ.get("CLOUDGUARD_MODEL", "gemini-3.5-flash-lite")
+        self.model = model or os.environ.get("CLOUDGUARD_MODEL", DEFAULT_MODEL)
         self.max_retries = max_retries
         self._client = genai.Client(api_key=key)
 

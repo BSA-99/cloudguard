@@ -57,6 +57,10 @@ class AgentRun:
     # None means the grounding check never ran (e.g. max_steps with no final answer) - an
     # eval harness must not read that as "passed."
     grounding_ok: bool | None = None
+    # Which DETECTORS tools were actually called this run. A detector missing here means
+    # that part of the audit never happened - the CLI and UI must surface that, not stay
+    # silent about an incomplete audit.
+    coverage: dict[str, bool] = field(default_factory=dict)
 
 
 # Matches <tool_result, </tool_result, </ tool_result, < / tool_result, any case, any
@@ -78,6 +82,11 @@ def _render_tool_result(result: ToolResult) -> str:
     instructions, however it reads."""
     payload = _escape_tool_result_markers(result.model_dump_json())
     return f'<tool_result tool="{result.tool}">\n{payload}\n</tool_result>'
+
+
+def _compute_coverage(run: AgentRun) -> dict[str, bool]:
+    called = {tc["name"] for tc in run.tool_calls}
+    return {d: d in called for d in DETECTORS}
 
 
 def _merge_findings(run: AgentRun, findings: list[Finding]) -> None:
@@ -130,6 +139,7 @@ def run_agent(
             if not response.tool_calls:
                 run.final_answer = response.text
                 run.stopped_reason = "final_answer"
+                run.coverage = _compute_coverage(run)
 
                 report = check_grounding(response.text or "", (tc["result"] for tc in run.tool_calls))
                 run.grounded_ids = report.grounded_ids
@@ -166,4 +176,5 @@ def run_agent(
                     "content": _render_tool_result(result),
                 })
 
+    run.coverage = _compute_coverage(run)
     return run

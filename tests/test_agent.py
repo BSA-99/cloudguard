@@ -10,6 +10,7 @@ from cloudguard import audit_log
 from cloudguard.agent import DEFAULT_MAX_STEPS, AgentRun, _render_tool_result, run_agent
 from cloudguard.llm import FakeLLM, LLMResponse, ToolCall, Usage
 from cloudguard.models import Finding, FindingType, Severity, ToolResult
+from cloudguard.tools import DETECTORS
 from tests.conftest import read_log
 
 
@@ -53,6 +54,43 @@ def test_executes_a_tool_call_and_feeds_the_delimited_result_back(backend):
     assert "cg-disk-orphan-01" in content
 
 
+def test_coverage_lists_which_detectors_ran_and_which_did_not(backend):
+    llm = FakeLLM([
+        _tool_call_response("list_unattached_disks", {}),
+        LLMResponse(text="Found 2 unattached disks."),
+    ])
+
+    run = run_agent(llm, backend, "any unattached disks?")
+
+    assert run.coverage == {
+        "list_unlocked_resource_groups": False,
+        "list_unattached_disks": True,
+        "find_weak_tls": False,
+    }
+    assert set(run.coverage) == set(DETECTORS)
+
+
+def test_coverage_is_all_true_when_every_detector_ran(backend):
+    llm = FakeLLM([
+        _tool_call_response("list_unlocked_resource_groups", {}),
+        _tool_call_response("list_unattached_disks", {}),
+        _tool_call_response("find_weak_tls", {}),
+        LLMResponse(text="Full audit done."),
+    ])
+
+    run = run_agent(llm, backend, "full audit")
+
+    assert all(run.coverage.values())
+
+
+def test_coverage_is_all_false_when_the_model_never_calls_a_tool(backend):
+    llm = FakeLLM([LLMResponse(text="Nothing to report.")])
+
+    run = run_agent(llm, backend, "audit")
+
+    assert not any(run.coverage.values())
+
+
 def test_stops_at_max_steps_without_an_extra_llm_call(backend):
     script = [_tool_call_response("list_unattached_disks", {}) for _ in range(DEFAULT_MAX_STEPS)]
     llm = FakeLLM(script)
@@ -66,6 +104,12 @@ def test_stops_at_max_steps_without_an_extra_llm_call(backend):
     # No final answer was ever produced, so there's nothing to grounding-check; None (not
     # True) means an eval harness can't mistake "never answered" for "answered and grounded".
     assert run.grounding_ok is None
+    # Coverage is still computed on the max_steps path, not just on a final answer.
+    assert run.coverage == {
+        "list_unlocked_resource_groups": False,
+        "list_unattached_disks": True,
+        "find_weak_tls": False,
+    }
     assert run.grounded_ids == []
     assert run.ungrounded_ids == []
 

@@ -93,6 +93,10 @@ def _print_agent_run(run: AgentRun, llm: LLMClient) -> None:
                 flag = f"  !! untrusted text: {', '.join(f.untrusted_text_flags)}" if f.untrusted_text_flags else ""
                 print(f"  [{f.severity.value:6}] {f.resource_id}{flag}")
 
+    missing_detectors = [name for name, ran in run.coverage.items() if not ran]
+    if missing_detectors:
+        print(f"\nDetectors not run in this audit: {', '.join(missing_detectors)}")
+
     print("\n== Answer ==")
     print(run.final_answer or "(no final answer — stopped at max_steps)")
 

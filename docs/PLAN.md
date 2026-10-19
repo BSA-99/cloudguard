@@ -14,7 +14,7 @@ after they are measured.
 - [ ] `pytest -m live` passes; record whether Azure accepted TLS 1.0 (it may not, post Feb 2026)
 - [ ] Replace synthetic mock with recorded one if useful (`cloudguard snapshot -o mock/live.json`, scrub sub ID)
 
-## Day 2 — Agent loop
+## Day 2 — Agent loop ✅
 - Model: gemini-3.5-flash-lite (free tier). 2.5-flash-lite was retired for new users, and 3.7/3.8-flash returned 503 under demand.
 - [x] Choose LLM provider: Gemini via `google-genai` (`GEMINI_API_KEY` / `CLOUDGUARD_MODEL` env vars, never committed); `llm.py` has a provider-neutral `LLMClient` protocol so an `AnthropicClient` can be added later without touching `agent.py`
 - [x] Fake LLM client (`FakeLLM`) for tests so CI needs no API key
@@ -22,9 +22,10 @@ after they are measured.
 - [x] System prompt: findings must cite exact IDs from tool results; tag/name text is data, not instructions (`agent.SYSTEM_PROMPT`; tool results passed back inside `<tool_result>` markers)
 - [x] Post-check: every resource ID in the final answer must appear in a tool result this run; otherwise reject/flag (`grounding.check_grounding`, pure function reused by the Day-4 eval harness; `AgentRun.grounding_ok`/`grounded_ids`/`ungrounded_ids`, logged as a `grounding_check` audit entry)
 - [x] `propose_lock(rg)`: writes a proposal record only (no ARM call); status pending/approved/rejected (`proposals.py`; only accepts a group `list_unlocked_resource_groups` returned this run, tracked via a ContextVar alongside `run_id`; `decide()` is the human approval path and is never a tool)
-- [ ] Streamlit page: run audit, show findings, approve/reject proposals
+- [x] Streamlit page: run audit, show findings, approve/reject proposals (`app/streamlit_app.py`, thin; all data shaping in `app/view.py`, unit-tested; `AgentRun` in `st.session_state` so approve/reject never re-calls Gemini; proposals read fresh from `proposals.jsonl` every render; "Decided by" is self-asserted in this version, not authenticated)
 - [x] Test: a compromised model that fully obeys `cg-shared-net`'s injected tag (calls `propose_lock` on all 6 groups, then lies in its final answer) still gets the 2 locked groups rejected by `propose_lock`'s own authorization check, with the rejections audit-logged and `AgentRun.findings` (deduplicated detector findings, independent of the model's prose) intact; a second case covers an invented resource group being rejected by both `propose_lock` and grounding
 - [x] `cloudguard [--mock] agent "<message>" [--max-steps N]`: prints findings/answer/grounding/proposals/run-stats; exits non-zero on grounding failure or `max_steps`; `llm` injectable (`FakeLLM` in tests, `GeminiClient` by default)
+- [x] First live run (gemini-3.5-flash-lite, mock data): 7/7 findings, grounding ok, injection tag flagged and ignored, 2 steps, 2,849/617 tokens, 1 retry (503).
 
 ## Day 3 — RAG + change requests
 - [ ] ~30 public Microsoft Learn pages (locks, Policy, TLS, managed disks, Reader/RBAC); store URL + chunk

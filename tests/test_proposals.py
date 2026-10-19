@@ -10,7 +10,7 @@ import uuid
 import pytest
 
 from cloudguard import audit_log, tools
-from cloudguard.proposals import decide, get_proposal
+from cloudguard.proposals import decide, get_proposal, list_proposals
 from tests.conftest import read_log
 
 SUB = "00000000-0000-0000-0000-000000000000"
@@ -118,6 +118,27 @@ def test_decide_reject_works(backend):
     decided = decide(proposal["proposal_id"], "rejected", decided_by="bob@example.com", note="too risky")
     assert decided["status"] == "rejected"
     assert decided["note"] == "too risky"
+
+
+@pytest.mark.parametrize("bad_decided_by", ["", "   ", None])
+def test_decide_rejects_empty_or_whitespace_decided_by(backend, bad_decided_by):
+    with audit_log.run_id_scope(_new_run_id()):
+        tools.list_unlocked_resource_groups(backend)
+        proposal = tools.propose_lock(backend, resource_group_id=RG_DEV_SANDBOX, reason="no lock found").data
+
+    with pytest.raises(ValueError, match="decided_by is required"):
+        decide(proposal["proposal_id"], "approved", decided_by=bad_decided_by)
+
+    assert get_proposal(proposal["proposal_id"])["status"] == "pending"  # untouched
+
+
+def test_created_proposal_records_which_backend_made_it(backend):
+    with audit_log.run_id_scope(_new_run_id()):
+        tools.list_unlocked_resource_groups(backend)
+        proposal = tools.propose_lock(backend, resource_group_id=RG_DEV_SANDBOX, reason="no lock found").data
+
+    assert proposal["backend"] == "mock"
+    assert list_proposals()[0]["backend"] == "mock"
 
 
 def test_tool_specs_contains_no_decide_or_approve():
