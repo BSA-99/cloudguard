@@ -24,6 +24,12 @@ live = [
 dev = [
     "pytest>=8",
 ]
+# Only needed to actually call an LLM. FakeLLM and the TOOL_SPECS conversion tests need none
+# of this, so mock-mode tests and CI stay key-free.
+agent = [
+    "google-genai>=1.0",
+    "python-dotenv>=1.0",
+]
 
 [project.scripts]
 cloudguard = "cloudguard.cli:main"

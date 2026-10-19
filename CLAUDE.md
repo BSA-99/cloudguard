@@ -22,6 +22,7 @@ be real and reproducible.
 - **Validate IDs before they touch KQL** (`backends.validate_resource_id`).
 - **No employer data.** Only the synthetic sandbox, mock JSON and public Microsoft docs.
   No secrets in the repo; auth is DefaultAzureCredential (managed identity / OIDC / az login).
+  The LLM key (`GEMINI_API_KEY`) and model (`CLOUDGUARD_MODEL`) are env vars only, same rule.
 - **Ground truth comes from `sandbox/seed_spec.json`, never from running the detectors.**
 
 ## Layout
@@ -30,6 +31,8 @@ be real and reproducible.
   (KQL for groups/disks/storage, ARM `ManagementLockClient` for locks; `lock_scope` derives a
   lock's scope from its own ID, shared by both backends)
 - `src/cloudguard/tools.py` — the tools, `TOOLS` registry, `TOOL_SPECS` JSON schemas
+- `src/cloudguard/llm.py` — provider-neutral `LLMClient` protocol; `GeminiClient` (live) and
+  `FakeLLM` (scripted, used by tests/CI); `tool_specs_to_gemini` converts `TOOL_SPECS`
 - `src/cloudguard/sandbox.py` + `sandbox/seed_spec.json` — spec -> az commands, ground truth, mock snapshot
 - `src/cloudguard/untrusted.py` — prompt-injection tripwire
 - `src/cloudguard/audit_log.py` — JSONL audit log

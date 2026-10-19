@@ -31,6 +31,14 @@ cloudguard --mock check     # score detectors against ground_truth.json
 cloudguard --mock tool get_resource --arg resource_id=/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cg-dev-sandbox
 ```
 
+## LLM client (Day 2, in progress)
+
+`src/cloudguard/llm.py` defines a provider-neutral `LLMClient` protocol. `FakeLLM` replays
+scripted responses, so tests and CI need no API key. `GeminiClient` (the live implementation,
+needs `pip install -e ".[agent]"`) reads `GEMINI_API_KEY` and `CLOUDGUARD_MODEL` from the
+environment or a local `.env`, never from the repo. The agent tool-calling loop itself lands
+later in Day 2 — see `docs/PLAN.md`.
+
 ## The seeded sandbox and ground truth
 
 `sandbox/seed_spec.json` describes a subscription broken on purpose:
