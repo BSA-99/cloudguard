@@ -41,6 +41,18 @@ after they are measured.
       plain text); oversized (>380-word) chunks that aren't a table/code block are split further at a
       paragraph or list-item boundary, with remaining ones (genuine tables, or a boundary-less nested list)
       printed by `build-index`
+- [x] Retrieval eval: `evals/retrieval_golden.jsonl` (21 queries, proposed by Claude, reviewed/edited by the
+      human before scoring, every id/slug verified against `corpus/index/chunks.jsonl`; `source` field
+      (`claude-drafted`/`human`) and optional `category: out_of_scope` tracked per line); `cloudguard
+      eval-retrieval [--k 5]` reports article-level hit@1/3/5 + MRR (deduped by `article_id` first) and
+      section-level hit@3 where `expected_sections` is given, split by `source`; excludes `out_of_scope`
+      queries from those metrics and reports them separately with their top-1 score, plus the
+      min/median/max top-1 score across in-scope queries (for picking a score threshold); lists queries
+      missing their expected article from the top 3; writes `evals/results/retrieval_<ts>.json` with model
+      name, index meta, corpus SHAs and git commit; metric math (`score_ranking`/`aggregate`) is pure and
+      unit-tested on hand-made rankings. Measured once on the committed index (21/21 `claude-drafted`, no
+      `human`/`out_of_scope` queries yet): hit@1=0.81, hit@3=1.00, hit@5=1.00, MRR=0.897, section
+      hit@3=0.58 (n=12), top-1 score min/median/max=0.64/0.79/0.87.
 - [ ] Change-request draft: summary, risk, rollback, test plan, citations (URLs from retrieval only)
 
 ## Day 4 — Evals

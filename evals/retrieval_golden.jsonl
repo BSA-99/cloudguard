@@ -19,3 +19,6 @@
 {"query": "What is a managed identity and when should I use one instead of a service principal?", "expected_articles": ["identity-managed-identities-overview"], "expected_sections": ["what-are-managed-identities"], "source": "claude-drafted"}
 {"query": "How can a GitHub Actions pipeline authenticate to Azure without storing a secret?", "expected_articles": ["identity-workload-identity-federation"], "expected_sections": ["why-use-workload-identity-federation"], "source": "claude-drafted"}
 {"query": "How do I make sure every resource has an owner tag so we can track cost accountability?", "expected_articles": ["tagging-tag-resources", "cost-mgt-best-practices"], "source": "claude-drafted"}
+{"query": "Make sure all the new resource groups created have a delete lock and apply the locks on the ones that currently exist", "expected_articles": ["policy-effect-deploy-if-not-exists", "policy-remediate-resources"], "source": "human"}
+{"query": "Why can't my pipeline delete old deployments in a resource group anymore?", "expected_articles": ["locks-overview"], "expected_sections": ["considerations-before-applying-your-locks"], "source": "human"}
+{"query": "why is an azure function app returning 503 out of nowhere", "expected_articles": [], "source": "human", "category": "out_of_scope"}

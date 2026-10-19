@@ -8,6 +8,7 @@
   cloudguard llm-ping                     # agent extra: one test call to Gemini
   cloudguard --mock agent "audit this subscription" [--max-steps N]
   cloudguard build-index                  # agent extra: embed the RAG corpus into corpus/index/
+  cloudguard eval-retrieval [--k 5]        # agent extra: score retrieval against evals/retrieval_golden.jsonl
 """
 
 from __future__ import annotations
@@ -15,13 +16,16 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from cloudguard.agent import AgentRun, DEFAULT_MAX_STEPS, run_agent
 from cloudguard.backends import MockBackend, ResourceGraphBackend
+from cloudguard.evals import retrieval as eval_retrieval
 from cloudguard.llm import GeminiClient, LLMClient, LLMError
 from cloudguard.models import GroundTruth
 from cloudguard.rag import index as rag_index
@@ -173,6 +177,77 @@ def cmd_build_index(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_eval_retrieval(args: argparse.Namespace) -> int:
+    from cloudguard.evals.retrieval import load_golden, run_eval
+    from cloudguard.rag.embed import FastEmbedder
+
+    golden = load_golden(args.golden)
+    embedder = FastEmbedder()
+    report = run_eval(golden, embedder, rag_index.DEFAULT_MANIFEST_PATH, rag_index.DEFAULT_INDEX_DIR, k=args.k)
+
+    index_meta = json.loads((rag_index.DEFAULT_INDEX_DIR / "meta.json").read_text(encoding="utf-8"))
+    corpus_manifest = json.loads(rag_index.DEFAULT_MANIFEST_PATH.read_text(encoding="utf-8"))
+    git_commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"], capture_output=True, text=True, cwd=REPO_ROOT, check=True,
+    ).stdout.strip()
+
+    def _fmt(block) -> dict:
+        return {
+            "num_queries": block.num_queries, "hit@1": round(block.hit_at_1, 4),
+            "hit@3": round(block.hit_at_3, 4), "hit@5": round(block.hit_at_5, 4),
+            "mrr": round(block.mrr, 4),
+            "section_hit@3": round(block.section_hit_at_3, 4) if block.section_hit_at_3 is not None else None,
+            "section_eval_count": block.section_eval_count,
+        }
+
+    out = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "k": args.k,
+        "model_name": embedder.name,
+        "index_meta": index_meta,
+        "corpus_repos": corpus_manifest["repos"],
+        "git_commit": git_commit,
+        "overall": _fmt(report.overall),
+        "by_source": {source: _fmt(block) for source, block in report.by_source.items()},
+        "misses_top3": report.misses_top3,
+        "top1_score_stats": report.top1_score_stats,
+        "out_of_scope": report.out_of_scope,
+        "per_query": report.per_query,
+    }
+
+    args.results_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    out_path = args.results_dir / f"retrieval_{stamp}.json"
+    out_path.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
+
+    o = report.overall
+    print(f"queries: {o.num_queries}")
+    print(f"hit@1={o.hit_at_1:.2f}  hit@3={o.hit_at_3:.2f}  hit@5={o.hit_at_5:.2f}  mrr={o.mrr:.3f}")
+    if o.section_hit_at_3 is not None:
+        print(f"section_hit@3={o.section_hit_at_3:.2f} (n={o.section_eval_count})")
+    for source, block in report.by_source.items():
+        print(f"  [{source}] n={block.num_queries}  hit@1={block.hit_at_1:.2f}  "
+              f"hit@3={block.hit_at_3:.2f}  hit@5={block.hit_at_5:.2f}  mrr={block.mrr:.3f}")
+    if report.misses_top3:
+        print(f"\nQueries missing their expected article in top 3 ({len(report.misses_top3)}):")
+        for m in report.misses_top3:
+            print(f"  {m['query']!r} -> expected {m['expected_articles']}, got {m['top3_article_ids']}")
+
+    stats = report.top1_score_stats
+    if stats["min"] is not None:
+        print(f"\ntop-1 score (in-scope): min={stats['min']:.4f}  median={stats['median']:.4f}  "
+              f"max={stats['max']:.4f}")
+
+    if report.out_of_scope:
+        print(f"\nOut-of-scope queries ({len(report.out_of_scope)}):")
+        for o in report.out_of_scope:
+            score_str = f"{o['top1_score']:.4f}" if o["top1_score"] is not None else "n/a"
+            print(f"  {o['query']!r} -> top1_score={score_str}")
+
+    print(f"\nwrote {out_path}")
+    return 0
+
+
 def main(argv: list[str] | None = None, llm: LLMClient | None = None) -> int:
     p = argparse.ArgumentParser(prog="cloudguard")
     p.add_argument("--mock", action="store_true", default=os.environ.get("CLOUDGUARD_MODE") == "mock",
@@ -204,6 +279,11 @@ def main(argv: list[str] | None = None, llm: LLMClient | None = None) -> int:
     bi.add_argument("--out-dir", type=Path, default=rag_index.DEFAULT_INDEX_DIR)
     bi.add_argument("--embed-model", default=None, help="defaults to CLOUDGUARD_EMBED_MODEL or bge-small-en-v1.5")
 
+    er = sub.add_parser("eval-retrieval", help="score rag.index.search() against evals/retrieval_golden.jsonl")
+    er.add_argument("--k", type=int, default=5)
+    er.add_argument("--golden", type=Path, default=eval_retrieval.DEFAULT_GOLDEN_PATH)
+    er.add_argument("--results-dir", type=Path, default=eval_retrieval.DEFAULT_RESULTS_DIR)
+
     args = p.parse_args(argv)
 
     if args.cmd == "llm-ping":
@@ -211,6 +291,9 @@ def main(argv: list[str] | None = None, llm: LLMClient | None = None) -> int:
 
     if args.cmd == "build-index":
         return cmd_build_index(args)
+
+    if args.cmd == "eval-retrieval":
+        return cmd_eval_retrieval(args)
 
     if args.cmd == "snapshot":
         if args.mock:

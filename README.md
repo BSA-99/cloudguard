@@ -193,6 +193,52 @@ cloudguard build-index     # rebuild corpus/index/ after editing the corpus or c
 rebuilding it. `search_docs` keeps the same tool name, arguments, and audit logging; each
 result is `{chunk_id, title, heading, url, snippet (~600 chars), score}`.
 
+### Retrieval eval
+
+`evals/retrieval_golden.jsonl` is a 21-query golden set (spread across locks, policy,
+Resource Graph, disks, TLS, RBAC, identity, tagging/cost; a few deliberately word it
+differently from the docs, e.g. "stop someone deleting prod by mistake") — each line is
+`{query, expected_articles, expected_sections?, source, category?}`, every id/slug
+verified against `corpus/index/chunks.jsonl`, not written from memory. `source` is
+`claude-drafted` or `human`, so scores can be split by who wrote the query. `category`
+defaults to `in_scope`; a line can instead be `"category": "out_of_scope"` with
+`expected_articles: []` for a question the agent shouldn't be answering from this corpus
+at all (e.g. something with no governance/security content) — those are excluded from
+hit@k/MRR entirely rather than scored as misses, and reported separately by their top-1
+similarity score.
+
+```bash
+cloudguard eval-retrieval [--k 5]   # score corpus/index/ against the golden set
+```
+
+`score_ranking()`/`aggregate()` are pure (no `search()`, no embedder), so the metric math
+is unit-tested on hand-made rankings in `tests/test_evals_retrieval.py` independent of
+anything real retrieval returns. Article-level hit@k dedupes by `article_id` first, so a
+page that took 2 of the per-article chunk slots can't inflate its own rank. Each real run
+writes `evals/results/retrieval_<UTC timestamp>.json` with the model name,
+`corpus/index/meta.json`, the pinned corpus repo SHAs, and this repo's own
+`git rev-parse HEAD`, so a score is always reproducible to the exact code + corpus + index
+that produced it. The report also includes the min/median/max top-1 similarity score
+across in-scope queries, to help pick a score threshold that separates in-scope from
+out-of-scope questions.
+
+Measured once, on the committed index, `bge-small-en-v1.5`, k=5 (21/21 `claude-drafted`,
+no `human` or `out_of_scope` queries yet):
+
+| metric | value |
+|---|---|
+| hit@1 | 0.81 |
+| hit@3 | 1.00 |
+| hit@5 | 1.00 |
+| MRR | 0.897 |
+| section hit@3 (n=12) | 0.58 |
+| top-1 score: min / median / max | 0.64 / 0.79 / 0.87 |
+
+No misses outside top 3 on this set. (An earlier run, before article-level hit@k deduped
+by `article_id`, showed "How can a GitHub Actions pipeline authenticate to Azure without
+storing a secret?" missing top 3 — that was a duplicate-chunk artifact of the same page
+occupying two rank slots, not a real retrieval gap, and the dedup fix resolved it.)
+
 ## NOTICE — third-party content
 
 `corpus/raw/` contains documentation fetched from these public Microsoft repositories, under

@@ -1,0 +1,437 @@
+{
+  "timestamp": "2026-10-19T22:51:12.153131+00:00",
+  "k": 5,
+  "model_name": "BAAI/bge-small-en-v1.5",
+  "index_meta": {
+    "manifest_hash": "56a12dac95a86320e44172061446be49782647f3d06876acd06b7e96df080581",
+    "model_name": "BAAI/bge-small-en-v1.5",
+    "chunk_count": 359,
+    "built_at": "2026-10-19T20:26:37.649354+00:00"
+  },
+  "corpus_repos": [
+    {
+      "repo": "MicrosoftDocs/azure-docs",
+      "commit_sha": "8f89cc8a3023d185c2d965e924d5b4d22159ef45",
+      "license": "CC-BY-4.0",
+      "attribution": "Content fetched from the MicrosoftDocs/azure-docs GitHub repository (https://github.com/MicrosoftDocs/azure-docs), \u00a9 Microsoft Corporation, licensed under Creative Commons Attribution 4.0 International (CC BY 4.0) per that repository's own LICENSE file: https://github.com/MicrosoftDocs/azure-docs/blob/8f89cc8a3023d185c2d965e924d5b4d22159ef45/LICENSE. Fetched verbatim at the pinned commit; no modifications made to the article text."
+    },
+    {
+      "repo": "MicrosoftDocs/azure-compute-docs",
+      "commit_sha": "c21e8e8229e33073fe93faa58a415b64279f3a44",
+      "license": "CC-BY-4.0",
+      "attribution": "Content fetched from the MicrosoftDocs/azure-compute-docs GitHub repository (https://github.com/MicrosoftDocs/azure-compute-docs), \u00a9 Microsoft Corporation, licensed under Creative Commons Attribution 4.0 International (CC BY 4.0) per that repository's own LICENSE file: https://github.com/MicrosoftDocs/azure-compute-docs/blob/c21e8e8229e33073fe93faa58a415b64279f3a44/LICENSE. Fetched verbatim at the pinned commit; no modifications made to the article text."
+    },
+    {
+      "repo": "MicrosoftDocs/entra-docs",
+      "commit_sha": "8d7c7ea1c9a7bc547e6077cb3703227f2e08b043",
+      "license": "MIT",
+      "attribution": "Content fetched from the MicrosoftDocs/entra-docs GitHub repository (https://github.com/MicrosoftDocs/entra-docs), \u00a9 Microsoft Corporation. Unlike its sibling docs repos, this repository's own LICENSE file states the MIT License (verified by reading the file, not assumed from the other repos' CC-BY-4.0 pattern): https://github.com/MicrosoftDocs/entra-docs/blob/8d7c7ea1c9a7bc547e6077cb3703227f2e08b043/LICENSE. Fetched verbatim at the pinned commit; no modifications made to the article text."
+    },
+    {
+      "repo": "MicrosoftDocs/cloud-adoption-framework",
+      "commit_sha": "5c44a2accff2018eba5dd738b648eef4c9db179b",
+      "license": "CC-BY-4.0",
+      "attribution": "Content fetched from the MicrosoftDocs/cloud-adoption-framework GitHub repository (https://github.com/MicrosoftDocs/cloud-adoption-framework), \u00a9 Microsoft Corporation, licensed under Creative Commons Attribution 4.0 International (CC BY 4.0) per that repository's own LICENSE file: https://github.com/MicrosoftDocs/cloud-adoption-framework/blob/5c44a2accff2018eba5dd738b648eef4c9db179b/LICENSE. Fetched verbatim at the pinned commit; no modifications made to the article text."
+    }
+  ],
+  "git_commit": "e88aa32e7d6254abcecab4b89af4d7ae129344ea",
+  "overall": {
+    "num_queries": 21,
+    "hit@1": 0.8095,
+    "hit@3": 0.9524,
+    "hit@5": 1.0,
+    "mrr": 0.8746,
+    "section_hit@3": 0.6667,
+    "section_eval_count": 12
+  },
+  "by_source": {
+    "claude-drafted": {
+      "num_queries": 21,
+      "hit@1": 0.8095,
+      "hit@3": 0.9524,
+      "hit@5": 1.0,
+      "mrr": 0.8746,
+      "section_hit@3": 0.6667,
+      "section_eval_count": 12
+    }
+  },
+  "misses_top3": [
+    {
+      "query": "How can a GitHub Actions pipeline authenticate to Azure without storing a secret?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "identity-workload-identity-federation"
+      ],
+      "top3_article_ids": [
+        "identity-managed-identities-overview-for-developers",
+        "storage-security-require-secure-transfer",
+        "identity-managed-identities-overview-for-developers"
+      ]
+    }
+  ],
+  "per_query": [
+    {
+      "query": "How do I lock a resource group so it can't be deleted?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "locks-overview"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "locks-overview",
+        "locks-overview",
+        "policy-remediate-resources"
+      ],
+      "section_hit_at_3": null
+    },
+    {
+      "query": "Who has permission to create or remove a resource lock?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "locks-overview"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "locks-overview",
+        "locks-overview",
+        "policy-remediate-resources"
+      ],
+      "section_hit_at_3": true
+    },
+    {
+      "query": "How do I stop someone deleting prod by mistake?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "locks-overview"
+      ],
+      "hit_at_1": false,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 0.5,
+      "top3_article_ids": [
+        "policy-assign-portal",
+        "locks-overview",
+        "disks-find-unattached"
+      ],
+      "section_hit_at_3": null
+    },
+    {
+      "query": "Does a lock on a resource group also apply to the resources inside it?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "locks-overview"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "locks-overview",
+        "locks-overview",
+        "policy-effect-deploy-if-not-exists"
+      ],
+      "section_hit_at_3": false
+    },
+    {
+      "query": "Can a CanNotDelete lock break deployments or backups?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "locks-overview"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "locks-overview",
+        "locks-overview",
+        "storage-security-blobs"
+      ],
+      "section_hit_at_3": true
+    },
+    {
+      "query": "How do I enforce resource group locks automatically with Azure Policy?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "policy-effect-deploy-if-not-exists",
+        "locks-overview"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "locks-overview",
+        "locks-overview",
+        "governance-caf-enforce-policies"
+      ],
+      "section_hit_at_3": null
+    },
+    {
+      "query": "How do I see which resources are non-compliant with a policy assignment?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "policy-assign-portal"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "policy-assign-portal",
+        "policy-assign-portal",
+        "policy-remediate-resources"
+      ],
+      "section_hit_at_3": true
+    },
+    {
+      "query": "What does the DeployIfNotExists policy effect actually do?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "policy-effect-deploy-if-not-exists"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "policy-effect-deploy-if-not-exists",
+        "policy-effect-deploy-if-not-exists",
+        "policy-remediate-resources"
+      ],
+      "section_hit_at_3": null
+    },
+    {
+      "query": "How do I automatically remediate resources that fail a policy?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "policy-remediate-resources"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "policy-remediate-resources",
+        "policy-remediate-resources",
+        "policy-overview"
+      ],
+      "section_hit_at_3": false
+    },
+    {
+      "query": "Give me a sample Resource Graph query that lists storage accounts",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "resource-graph-starter-samples"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "resource-graph-starter-samples",
+        "resource-graph-starter-samples",
+        "storage-tls-minimum-version"
+      ],
+      "section_hit_at_3": true
+    },
+    {
+      "query": "How do I find managed disks that aren't attached to any VM?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "disks-find-unattached"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "disks-find-unattached",
+        "disks-types",
+        "disks-types"
+      ],
+      "section_hit_at_3": false
+    },
+    {
+      "query": "Am I still charged for a managed disk after its VM is deleted?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "disks-understand-billing",
+        "disks-find-unattached"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "disks-understand-billing",
+        "disks-types",
+        "disks-find-unattached"
+      ],
+      "section_hit_at_3": null
+    },
+    {
+      "query": "Find the disks that are just sitting there costing us money for no reason",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "disks-find-unattached",
+        "cost-mgt-best-practices"
+      ],
+      "hit_at_1": false,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 0.3333333333333333,
+      "top3_article_ids": [
+        "disks-understand-billing",
+        "disks-understand-billing",
+        "disks-find-unattached"
+      ],
+      "section_hit_at_3": null
+    },
+    {
+      "query": "How do I set the minimum TLS version required on a storage account?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "storage-tls-minimum-version"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "storage-tls-minimum-version",
+        "storage-tls-minimum-version",
+        "storage-tls-migrate-to-tls2"
+      ],
+      "section_hit_at_3": true
+    },
+    {
+      "query": "How do I check which TLS version my clients are actually using against storage?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "storage-tls-client-version",
+        "storage-tls-minimum-version"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "storage-tls-minimum-version",
+        "storage-tls-migrate-to-tls2",
+        "storage-tls-minimum-version"
+      ],
+      "section_hit_at_3": null
+    },
+    {
+      "query": "We got a notice that old TLS versions are being retired \u2014 what do we need to change?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "storage-tls-migrate-to-tls2",
+        "storage-tls-minimum-version"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "storage-tls-migrate-to-tls2",
+        "storage-tls-minimum-version",
+        "storage-tls-migrate-to-tls2"
+      ],
+      "section_hit_at_3": null
+    },
+    {
+      "query": "What permissions does the built-in Reader role actually grant?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "rbac-reader-role"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "rbac-reader-role",
+        "rbac-overview",
+        "storage-tls-minimum-version"
+      ],
+      "section_hit_at_3": true
+    },
+    {
+      "query": "Should I assign Azure roles to individual users or to groups?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "rbac-best-practices"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "rbac-best-practices",
+        "rbac-best-practices",
+        "rbac-overview"
+      ],
+      "section_hit_at_3": true
+    },
+    {
+      "query": "What is a managed identity and when should I use one instead of a service principal?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "identity-managed-identities-overview"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "identity-managed-identities-overview",
+        "identity-managed-identities-overview",
+        "identity-managed-identities-overview-for-developers"
+      ],
+      "section_hit_at_3": true
+    },
+    {
+      "query": "How can a GitHub Actions pipeline authenticate to Azure without storing a secret?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "identity-workload-identity-federation"
+      ],
+      "hit_at_1": false,
+      "hit_at_3": false,
+      "hit_at_5": true,
+      "reciprocal_rank": 0.2,
+      "top3_article_ids": [
+        "identity-managed-identities-overview-for-developers",
+        "storage-security-require-secure-transfer",
+        "identity-managed-identities-overview-for-developers"
+      ],
+      "section_hit_at_3": false
+    },
+    {
+      "query": "How do I make sure every resource has an owner tag so we can track cost accountability?",
+      "source": "claude-drafted",
+      "expected_articles": [
+        "tagging-tag-resources",
+        "cost-mgt-best-practices"
+      ],
+      "hit_at_1": false,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 0.3333333333333333,
+      "top3_article_ids": [
+        "tagging-caf-resource-tagging",
+        "tagging-caf-resource-tagging",
+        "cost-mgt-best-practices"
+      ],
+      "section_hit_at_3": null
+    }
+  ]
+}
