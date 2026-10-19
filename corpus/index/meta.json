@@ -1,6 +1,6 @@
 {
   "manifest_hash": "56a12dac95a86320e44172061446be49782647f3d06876acd06b7e96df080581",
   "model_name": "BAAI/bge-small-en-v1.5",
-  "chunk_count": 351,
-  "built_at": "2026-10-19T20:04:10.625637+00:00"
+  "chunk_count": 359,
+  "built_at": "2026-10-19T20:26:37.649354+00:00"
 }
