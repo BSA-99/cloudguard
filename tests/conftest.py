@@ -17,6 +17,14 @@ def isolated_audit_log(tmp_path, monkeypatch):
     return path
 
 
+@pytest.fixture(autouse=True)
+def isolated_proposals(tmp_path, monkeypatch):
+    """Every test writes to its own proposals store, never the repo's."""
+    path = tmp_path / "proposals.jsonl"
+    monkeypatch.setenv("CLOUDGUARD_PROPOSALS", str(path))
+    return path
+
+
 def _block_real_gemini_calls(*args, **kwargs):
     raise RuntimeError("Tests must not call the real Gemini API; use FakeLLM.")
 

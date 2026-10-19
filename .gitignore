@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 .env
 audit_log.jsonl
+proposals.jsonl
 # Live-subscription artifacts contain your real subscription ID. Keep them local.
 ground_truth.live.json
 mock/live*.json

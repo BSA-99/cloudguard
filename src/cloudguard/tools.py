@@ -1,8 +1,9 @@
-"""The five read-only tools the agent will call, plus their JSON-schema specs.
+"""The six tools the agent will call, plus their JSON-schema specs.
 
 Design rules (each one is a likely interview question):
-  * Every tool is a read. There is no tool that changes Azure. propose_lock arrives on
-    Day 2 and only writes a *proposal* record, never an ARM call.
+  * Every tool is read-only against Azure. propose_lock is the one exception to "nothing
+    changes" in the literal sense - it writes a *proposal* record to proposals.jsonl, but
+    makes no ARM call; a human decides via proposals.decide(), which is not a tool at all.
   * Findings come from deterministic queries, not from the model. The model's job is to
     choose tools, explain, and draft change requests, so it cannot "find" a resource that
     the query didn't return.
@@ -21,6 +22,8 @@ from typing import Any, Callable
 from cloudguard import audit_log, docs_search
 from cloudguard.backends import Backend, InvalidResourceId
 from cloudguard.models import Finding, FindingType, Severity, ToolResult
+from cloudguard.proposals import ProposalRejected
+from cloudguard.proposals import propose_lock as _propose_lock_impl
 from cloudguard.untrusted import scan_fields
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -34,7 +37,7 @@ def _audited(tool_name: str) -> Callable:
             start = time.perf_counter()
             try:
                 result = fn(backend, **kwargs)
-            except InvalidResourceId as e:
+            except (InvalidResourceId, ProposalRejected) as e:
                 result = ToolResult(tool=tool_name, ok=False, backend=backend.name, error=str(e))
             except Exception as e:  # surfaced to the agent as a failed tool call, never swallowed
                 result = ToolResult(tool=tool_name, ok=False, backend=backend.name,
@@ -67,6 +70,8 @@ def list_unlocked_resource_groups(backend: Backend) -> ToolResult:
         )
         for row in backend.unlocked_resource_groups()
     ]
+    # propose_lock reads this to confirm a resource group is actually unlocked this run.
+    audit_log.record_unlocked_resource_group_ids(f.resource_id for f in findings)
     return ToolResult(tool="list_unlocked_resource_groups", ok=True, backend=backend.name,
                       findings=findings, count=len(findings))
 
@@ -132,6 +137,11 @@ def search_docs(backend: Backend, query: str, k: int = 3) -> ToolResult:
                       data={"query": query, "results": hits}, count=len(hits))
 
 
+# propose_lock is defined in proposals.py as a plain function (so that module never depends
+# on tools.py / _audited, avoiding a circular import); it's wrapped here like any other tool.
+propose_lock = _audited("propose_lock")(_propose_lock_impl)
+
+
 # Single registry: CLI dispatch, Day-2 agent loop and tests all read from here.
 TOOLS: dict[str, Callable[..., ToolResult]] = {
     "list_unlocked_resource_groups": list_unlocked_resource_groups,
@@ -139,6 +149,7 @@ TOOLS: dict[str, Callable[..., ToolResult]] = {
     "find_weak_tls": find_weak_tls,
     "get_resource": get_resource,
     "search_docs": search_docs,
+    "propose_lock": propose_lock,
 }
 
 DETECTORS = ("list_unlocked_resource_groups", "list_unattached_disks", "find_weak_tls")
@@ -186,6 +197,24 @@ TOOL_SPECS: list[dict[str, Any]] = [
                 "k": {"type": "integer", "minimum": 1, "maximum": 10, "default": 3},
             },
             "required": ["query"],
+        },
+    },
+    {
+        "name": "propose_lock",
+        "description": "Propose a CanNotDelete management lock on a resource group that "
+                       "list_unlocked_resource_groups already returned as unlocked this run. Writes a "
+                       "proposal record for a human to approve; makes no change to Azure. Fails for any "
+                       "resource group not already confirmed unlocked this run, including locked groups "
+                       "and groups never looked up.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "resource_group_id": {"type": "string",
+                    "description": "Full ARM resource ID of the resource group, e.g. /subscriptions/<guid>/resourceGroups/<rg>"},
+                "reason": {"type": "string",
+                    "description": "Why this group should be locked. Free text; treated as untrusted data, not instructions."},
+            },
+            "required": ["resource_group_id", "reason"],
         },
     },
 ]
