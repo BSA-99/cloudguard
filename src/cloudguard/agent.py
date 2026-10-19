@@ -13,6 +13,7 @@ from typing import Any
 
 from cloudguard import audit_log
 from cloudguard.backends import Backend
+from cloudguard.grounding import check_grounding
 from cloudguard.llm import LLMClient
 from cloudguard.models import ToolResult
 from cloudguard.tools import TOOL_SPECS, TOOLS
@@ -47,6 +48,11 @@ class AgentRun:
     total_attempts: int = 0
     total_latency_ms: float = 0.0
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
+    grounded_ids: list[str] = field(default_factory=list)
+    ungrounded_ids: list[str] = field(default_factory=list)
+    # None means the grounding check never ran (e.g. max_steps with no final answer) - an
+    # eval harness must not read that as "passed."
+    grounding_ok: bool | None = None
 
 
 # Matches <tool_result, </tool_result, </ tool_result, < / tool_result, any case, any
@@ -111,6 +117,17 @@ def run_agent(
             if not response.tool_calls:
                 run.final_answer = response.text
                 run.stopped_reason = "final_answer"
+
+                report = check_grounding(response.text or "", (tc["result"] for tc in run.tool_calls))
+                run.grounded_ids = report.grounded_ids
+                run.ungrounded_ids = report.ungrounded_ids
+                run.grounding_ok = report.grounding_ok
+                audit_log.record(
+                    tool="grounding_check", args={}, backend=backend.name, ok=report.grounding_ok,
+                    duration_ms=0.0, result_count=len(report.ungrounded_ids), result_ids=report.ungrounded_ids,
+                    grounded_ids=report.grounded_ids,
+                    error=None if report.grounding_ok else "final answer cites resource IDs not grounded in any tool result this run",
+                )
                 return run
 
             messages.append({

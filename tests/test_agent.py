@@ -63,6 +63,11 @@ def test_stops_at_max_steps_without_an_extra_llm_call(backend):
     assert run.final_answer is None
     assert run.steps == DEFAULT_MAX_STEPS
     assert len(llm.calls) == DEFAULT_MAX_STEPS
+    # No final answer was ever produced, so there's nothing to grounding-check; None (not
+    # True) means an eval harness can't mistake "never answered" for "answered and grounded".
+    assert run.grounding_ok is None
+    assert run.grounded_ids == []
+    assert run.ungrounded_ids == []
 
 
 def test_unknown_tool_name_fails_gracefully_instead_of_crashing(backend):
@@ -88,11 +93,10 @@ def test_unknown_tool_name_is_still_audit_logged(backend, isolated_audit_log):
     run = run_agent(llm, backend, "do something destructive")
 
     entries = read_log(isolated_audit_log)
-    assert len(entries) == 1
-    assert entries[0]["tool"] == "delete_everything"
-    assert entries[0]["ok"] is False
-    assert "unknown tool" in entries[0]["error"]
-    assert entries[0]["run_id"] == run.run_id
+    tool_entry = next(e for e in entries if e["tool"] == "delete_everything")
+    assert tool_entry["ok"] is False
+    assert "unknown tool" in tool_entry["error"]
+    assert tool_entry["run_id"] == run.run_id
 
 
 def test_every_tool_call_in_a_run_is_audit_logged_with_the_same_run_id(backend, isolated_audit_log):
@@ -105,7 +109,7 @@ def test_every_tool_call_in_a_run_is_audit_logged_with_the_same_run_id(backend, 
     run = run_agent(llm, backend, "full audit")
 
     entries = read_log(isolated_audit_log)
-    assert [e["tool"] for e in entries] == ["list_unattached_disks", "find_weak_tls"]
+    assert [e["tool"] for e in entries] == ["list_unattached_disks", "find_weak_tls", "grounding_check"]
     assert all(e["run_id"] == run.run_id for e in entries)
 
 
@@ -130,6 +134,28 @@ def test_tokens_and_attempts_are_summed_across_every_step(backend, monkeypatch):
     assert run.total_output_tokens == 13
     assert run.total_attempts == 3
     assert run.total_latency_ms == pytest.approx(2000.0)  # two steps, 1.0s each
+
+
+def test_grounding_fields_and_audit_entry_are_wired_up_for_an_ungrounded_answer(backend, isolated_audit_log):
+    invented = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cg-dev-sandbox" \
+               "/providers/Microsoft.Compute/disks/cg-disk-orphan-03"
+    llm = FakeLLM([
+        _tool_call_response("list_unattached_disks", {}),
+        LLMResponse(text=f"Found a problem disk at {invented}."),
+    ])
+
+    run = run_agent(llm, backend, "audit")
+
+    assert run.grounding_ok is False
+    assert run.ungrounded_ids == [invented]
+    assert run.grounded_ids == []
+
+    entries = read_log(isolated_audit_log)
+    grounding_entry = next(e for e in entries if e["tool"] == "grounding_check")
+    assert grounding_entry["run_id"] == run.run_id
+    assert grounding_entry["ok"] is False
+    assert grounding_entry["result_ids"] == [invented]
+    assert grounding_entry["grounded_ids"] == []
 
 
 def test_run_id_contextvar_is_reset_after_the_run(backend):
@@ -160,7 +186,7 @@ def test_concurrent_agent_runs_in_separate_threads_get_different_run_ids(backend
     assert run_id_a != run_id_b
 
     entries = read_log(isolated_audit_log)
-    assert len(entries) == 2  # one list_unattached_disks call per run
+    assert len(entries) == 4  # one list_unattached_disks call + one grounding_check, per run
     assert {e["run_id"] for e in entries} == {run_id_a, run_id_b}
     for e in entries:
         assert e["run_id"] is not None  # never fell through to a shared/default value

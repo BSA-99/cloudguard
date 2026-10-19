@@ -53,6 +53,7 @@ def record(
     result_ids: list[str],
     error: str | None = None,
     run_id: str | None = None,
+    grounded_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     entry = {
         "ts": datetime.now(timezone.utc).isoformat(),
@@ -65,6 +66,7 @@ def record(
         "duration_ms": round(duration_ms, 2),
         "result_count": result_count,
         "result_ids": result_ids,
+        "grounded_ids": grounded_ids,
         "error": error,
     }
     path = log_path()

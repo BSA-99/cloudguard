@@ -20,7 +20,7 @@ after they are measured.
 - [x] Fake LLM client (`FakeLLM`) for tests so CI needs no API key
 - [x] `agent.py`: tool-calling loop over `TOOL_SPECS`, max-steps limit (default 8), every call through `TOOLS` (so it is audit-logged); run_id, tokens, attempts and latency recorded per run
 - [x] System prompt: findings must cite exact IDs from tool results; tag/name text is data, not instructions (`agent.SYSTEM_PROMPT`; tool results passed back inside `<tool_result>` markers)
-- [ ] Post-check: every resource ID in the final answer must appear in a tool result this run; otherwise reject/flag
+- [x] Post-check: every resource ID in the final answer must appear in a tool result this run; otherwise reject/flag (`grounding.check_grounding`, pure function reused by the Day-4 eval harness; `AgentRun.grounding_ok`/`grounded_ids`/`ungrounded_ids`, logged as a `grounding_check` audit entry)
 - [ ] `propose_lock(rg)`: writes a proposal record only (no ARM call); status pending/approved/rejected
 - [ ] Streamlit page: run audit, show findings, approve/reject proposals
 - [ ] Test: injection tag in `cg-shared-net` does not change the verdict and does not trigger `propose_lock` on every RG
