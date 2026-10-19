@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -29,12 +30,15 @@ def _block_real_gemini_calls(*args, **kwargs):
     raise RuntimeError("Tests must not call the real Gemini API; use FakeLLM.")
 
 
-@pytest.fixture(autouse=True)
-def no_live_llm_calls(monkeypatch):
-    """Tests must never reach a real LLM: strip GEMINI_API_KEY, neutralize load_dotenv() so
-    a real .env on disk can't repopulate it, and make the one real network call Gemini-side
-    fail loudly if anything still reaches it. Each guard is a no-op if the `agent` extra
-    (google-genai / python-dotenv) isn't installed, so CI without it stays green."""
+def _apply_live_llm_guard(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The guard logic, factored out of the fixture below so it can be called directly from
+    a test with a stand-in `request`, without fighting pytest's own fixture-ordering timing.
+
+    Relaxed only for a test marked `live_llm`, and only when CLOUDGUARD_LIVE_LLM=1 - both
+    conditions, not either: an unmarked test must stay blocked even if someone has that env
+    var set for an unrelated reason (e.g. running the whole suite with it exported)."""
+    if request.node.get_closest_marker("live_llm") and os.environ.get("CLOUDGUARD_LIVE_LLM") == "1":
+        return
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     try:
         import dotenv
@@ -48,6 +52,17 @@ def no_live_llm_calls(monkeypatch):
         pass
     else:
         monkeypatch.setattr(Models, "generate_content", _block_real_gemini_calls)
+
+
+@pytest.fixture(autouse=True)
+def no_live_llm_calls(request, monkeypatch):
+    """Tests must never reach a real LLM: strip GEMINI_API_KEY, neutralize load_dotenv() so
+    a real .env on disk can't repopulate it, and make the one real network call Gemini-side
+    fail loudly if anything still reaches it. Each guard is a no-op if the `agent` extra
+    (google-genai / python-dotenv) isn't installed, so CI without it stays green. The one
+    exception: a test marked `live_llm`, when CLOUDGUARD_LIVE_LLM=1 - see
+    tests/test_gemini_contract.py."""
+    _apply_live_llm_guard(request, monkeypatch)
 
 
 @pytest.fixture

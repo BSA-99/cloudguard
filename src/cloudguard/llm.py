@@ -41,10 +41,27 @@ class LLMResponse:
     usage: Usage = field(default_factory=lambda: Usage(0, 0))
     attempts: int = 1  # how many calls generate_content() took, including retries
     raw: Any = None  # the provider's native response, for logging/debugging only
+    # The provider's own representation of this turn (for Gemini: the candidate's Content,
+    # parts/thought_signature/etc. intact), so it can be echoed back on the next call
+    # unchanged instead of rebuilt (lossily) from our neutral ToolCall list. None for
+    # FakeLLM and any message history not produced by this same client.
+    provider_turn: Any = None
 
 
 class LLMClient(Protocol):
     name: str
+
+
+class LLMError(Exception):
+    """A clean, provider-neutral LLM failure: status + message + which model, so a caller
+    like cmd_agent can print one line instead of a traceback. Anything that is NOT an
+    LLMError (a real CloudGuard bug) is left to propagate normally."""
+
+    def __init__(self, status: str | None, message: str | None, model: str):
+        self.status = status
+        self.message = message
+        self.model = model
+        super().__init__(f"{status}: {message} (model: {model})")
 
     def generate(self, messages: list[dict[str, Any]], tool_specs: list[dict[str, Any]]) -> LLMResponse: ...
 
@@ -154,16 +171,13 @@ class GeminiClient:
                 return response, attempt + 1
             except errors.APIError as e:
                 if e.code not in _RETRYABLE_CODES:
-                    raise
+                    raise LLMError(e.status, e.message, self.model) from e
                 last_error = e
                 if attempt == self.max_retries - 1:
                     break
                 time.sleep(delay)
                 delay *= 2
-        raise RuntimeError(
-            f"Gemini API call failed after {self.max_retries} attempts "
-            f"(last error: {last_error.code} {last_error.status})"
-        ) from last_error
+        raise LLMError(last_error.status, last_error.message, self.model) from last_error
 
 
 def _to_gemini_content(types: Any, message: dict[str, Any]) -> Any:
@@ -171,6 +185,13 @@ def _to_gemini_content(types: Any, message: dict[str, Any]) -> Any:
     if role == "user":
         return types.Content(role="user", parts=[types.Part(text=message.get("content") or "")])
     if role == "assistant":
+        # Prefer echoing back exactly what Gemini sent us (parts, thought_signature, any
+        # field we don't model) rather than rebuilding a lossy proxy from our own ToolCall
+        # list. Only a conversation this same GeminiClient produced has this; FakeLLM-driven
+        # runs and hand-built message lists fall back to rebuilding from id/name/arguments.
+        provider_turn = message.get("provider_turn")
+        if provider_turn is not None:
+            return provider_turn
         parts = []
         if message.get("content"):
             parts.append(types.Part(text=message["content"]))
@@ -180,7 +201,10 @@ def _to_gemini_content(types: Any, message: dict[str, Any]) -> Any:
             )))
         return types.Content(role="model", parts=parts)
     if role == "tool":
-        return types.Content(role="function", parts=[types.Part(function_response=types.FunctionResponse(
+        # role="user", not "function": Gemini's generateContent API rejects role="function"
+        # outright (400 INVALID_ARGUMENT). The function_response Part is what identifies
+        # this as a tool result, not the Content-level role.
+        return types.Content(role="user", parts=[types.Part(function_response=types.FunctionResponse(
             id=message.get("tool_call_id"), name=message["name"], response={"output": message["content"]},
         ))])
     raise ValueError(f"unknown message role: {role!r}")
@@ -190,9 +214,8 @@ def _from_gemini_response(response: Any, attempts: int) -> LLMResponse:
     # Read candidates[0].content.parts directly rather than response.text /
     # response.function_calls: both of those log a warning whenever a function_call part is
     # present (which is every tool-calling turn), even though that's expected, not an error.
-    parts = []
-    if response.candidates and response.candidates[0].content:
-        parts = response.candidates[0].content.parts or []
+    provider_turn = response.candidates[0].content if response.candidates else None
+    parts = provider_turn.parts or [] if provider_turn else []
 
     text_chunks = []
     tool_calls = []
@@ -213,6 +236,7 @@ def _from_gemini_response(response: Any, attempts: int) -> LLMResponse:
         ),
         attempts=attempts,
         raw=response,
+        provider_turn=provider_turn,
     )
 
 

@@ -21,7 +21,7 @@ from typing import Any
 
 from cloudguard.agent import AgentRun, DEFAULT_MAX_STEPS, run_agent
 from cloudguard.backends import MockBackend, ResourceGraphBackend
-from cloudguard.llm import GeminiClient, LLMClient
+from cloudguard.llm import GeminiClient, LLMClient, LLMError
 from cloudguard.models import GroundTruth
 from cloudguard.tools import DETECTORS, REPO_ROOT, TOOL_SPECS, TOOLS
 
@@ -137,7 +137,12 @@ def cmd_agent(args: argparse.Namespace, backend, llm: LLMClient | None = None) -
         except RuntimeError as e:
             sys.exit(str(e))
 
-    run = run_agent(llm, backend, args.message, max_steps=args.max_steps)
+    try:
+        run = run_agent(llm, backend, args.message, max_steps=args.max_steps)
+    except LLMError as e:
+        print(f"LLM call failed: {e.status} {e.message} (model: {e.model})")
+        return 2
+
     _print_agent_run(run, llm)
     return 1 if (run.grounding_ok is False or run.stopped_reason == "max_steps") else 0
 

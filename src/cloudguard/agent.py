@@ -149,6 +149,10 @@ def run_agent(
                 "tool_calls": [
                     {"id": c.id, "name": c.name, "arguments": c.arguments} for c in response.tool_calls
                 ],
+                # Lets GeminiClient echo back exactly what it received (thought_signature
+                # included) instead of rebuilding a lossy proxy; opaque to every other
+                # client, including FakeLLM, which never sets it.
+                "provider_turn": response.provider_turn,
             })
             for call in response.tool_calls:
                 result = _execute_tool(backend, call.name, call.arguments)

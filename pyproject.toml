@@ -41,4 +41,5 @@ where = ["src"]
 testpaths = ["tests"]
 markers = [
     "live: hits a real Azure subscription (skipped unless CLOUDGUARD_LIVE_TESTS=1)",
+    "live_llm: hits the real Gemini API (skipped unless CLOUDGUARD_LIVE_LLM=1)",
 ]
