@@ -91,17 +91,25 @@ def tool_specs_to_gemini(tool_specs: list[dict[str, Any]]) -> list[dict[str, Any
     ]
 
 
+# Transient errors worth retrying: 429 (rate limited) and 503 (model temporarily overloaded).
+# Anything else (bad request, auth failure, ...) is never retried.
+_RETRYABLE_CODES = (429, 503)
+
+
 class GeminiClient:
     """Live mode: calls Gemini through the google-genai SDK.
 
     GEMINI_API_KEY and CLOUDGUARD_MODEL are read from the environment (optionally loaded
     from a local .env via python-dotenv). Both google-genai and python-dotenv are imported
     lazily, inside __init__, so mock-mode tests and CI never need the `agent` extra.
+
+    Retries 429 and 503 with exponential backoff, up to max_retries attempts, then raises a
+    RuntimeError naming the attempt count and the last error instead of retrying forever.
     """
 
     name = "gemini"
 
-    def __init__(self, model: str | None = None, api_key: str | None = None, max_retries: int = 5):
+    def __init__(self, model: str | None = None, api_key: str | None = None, max_retries: int = 3):
         from dotenv import load_dotenv
         from google import genai
 
@@ -130,14 +138,22 @@ class GeminiClient:
         from google.genai import errors
 
         delay = 1.0
+        last_error: Any = None
         for attempt in range(self.max_retries):
             try:
                 return self._client.models.generate_content(model=self.model, contents=contents, config=config)
             except errors.APIError as e:
-                if e.code != 429 or attempt == self.max_retries - 1:
+                if e.code not in _RETRYABLE_CODES:
                     raise
+                last_error = e
+                if attempt == self.max_retries - 1:
+                    break
                 time.sleep(delay)
                 delay *= 2
+        raise RuntimeError(
+            f"Gemini API call failed after {self.max_retries} attempts "
+            f"(last error: {last_error.code} {last_error.status})"
+        ) from last_error
 
 
 def _to_gemini_content(types: Any, message: dict[str, Any]) -> Any:

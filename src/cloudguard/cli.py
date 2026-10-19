@@ -5,6 +5,7 @@
   cloudguard --mock audit                 # run all detectors, print findings
   cloudguard --mock check                 # run all detectors, score against ground_truth.json
   cloudguard snapshot -o mock/live.json   # live only: record the subscription for mock mode
+  cloudguard llm-ping                     # agent extra: one test call to Gemini
 """
 
 from __future__ import annotations
@@ -13,11 +14,13 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 from cloudguard.backends import MockBackend, ResourceGraphBackend
+from cloudguard.llm import GeminiClient
 from cloudguard.models import GroundTruth
-from cloudguard.tools import DETECTORS, REPO_ROOT, TOOLS
+from cloudguard.tools import DETECTORS, REPO_ROOT, TOOL_SPECS, TOOLS
 
 DEFAULT_SNAPSHOT = REPO_ROOT / "mock" / "subscription_snapshot.json"
 DEFAULT_GROUND_TRUTH = REPO_ROOT / "ground_truth.json"
@@ -47,6 +50,31 @@ def score(found_ids: set[str], truth: GroundTruth) -> dict:
     }
 
 
+def cmd_llm_ping() -> int:
+    """One real call to the live LLM: sanity-checks the key, model and tool-call wiring."""
+    tool_spec = next(s for s in TOOL_SPECS if s["name"] == "list_unattached_disks")
+    messages = [{"role": "user", "content": "Check this subscription for unattached disks"}]
+
+    try:
+        client = GeminiClient()
+    except RuntimeError as e:
+        sys.exit(str(e))
+
+    start = time.perf_counter()
+    response = client.generate(messages, [tool_spec])
+    latency_ms = (time.perf_counter() - start) * 1000
+
+    print(f"model: {client.model}")
+    print(f"response: {'tool_call' if response.tool_calls else 'text'}")
+    if response.text:
+        print(f"text: {response.text}")
+    for call in response.tool_calls:
+        print(f"tool_call: {call.name}({call.arguments})")
+    print(f"usage: input_tokens={response.usage.input_tokens} output_tokens={response.usage.output_tokens}")
+    print(f"latency_ms: {latency_ms:.0f}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="cloudguard")
     p.add_argument("--mock", action="store_true", default=os.environ.get("CLOUDGUARD_MODE") == "mock",
@@ -66,7 +94,12 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("snapshot", help="(live) record the subscription to JSON for mock mode")
     s.add_argument("-o", "--out", type=Path, required=True)
 
+    sub.add_parser("llm-ping", help="send one test message to Gemini and print how it responded")
+
     args = p.parse_args(argv)
+
+    if args.cmd == "llm-ping":
+        return cmd_llm_ping()
 
     if args.cmd == "snapshot":
         if args.mock:

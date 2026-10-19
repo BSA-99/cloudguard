@@ -17,6 +17,31 @@ def isolated_audit_log(tmp_path, monkeypatch):
     return path
 
 
+def _block_real_gemini_calls(*args, **kwargs):
+    raise RuntimeError("Tests must not call the real Gemini API; use FakeLLM.")
+
+
+@pytest.fixture(autouse=True)
+def no_live_llm_calls(monkeypatch):
+    """Tests must never reach a real LLM: strip GEMINI_API_KEY, neutralize load_dotenv() so
+    a real .env on disk can't repopulate it, and make the one real network call Gemini-side
+    fail loudly if anything still reaches it. Each guard is a no-op if the `agent` extra
+    (google-genai / python-dotenv) isn't installed, so CI without it stays green."""
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    try:
+        import dotenv
+    except ImportError:
+        pass
+    else:
+        monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **k: False)
+    try:
+        from google.genai.models import Models
+    except ImportError:
+        pass
+    else:
+        monkeypatch.setattr(Models, "generate_content", _block_real_gemini_calls)
+
+
 @pytest.fixture
 def backend() -> MockBackend:
     return MockBackend(ROOT / "mock" / "subscription_snapshot.json")
