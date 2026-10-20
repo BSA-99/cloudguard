@@ -9,6 +9,7 @@
   cloudguard --mock agent "audit this subscription" [--max-steps N]
   cloudguard build-index                  # agent extra: embed the RAG corpus into corpus/index/
   cloudguard eval-retrieval [--k 5]        # agent extra: score retrieval against evals/retrieval_golden.jsonl
+  cloudguard eval-agent [--case ID] [--limit N] [--runs N] [--dry-run]  # run the agent golden set (mock backend)
   cloudguard validate-agent-golden        # check evals/agent_golden.jsonl (schema, tools, IDs, articles, counts)
   cloudguard --mock draft-cr <proposal_id> # agent extra: draft a change request for a lock proposal (Markdown)
 """
@@ -29,7 +30,7 @@ from cloudguard import proposals
 from cloudguard.agent import AgentRun, DEFAULT_MAX_STEPS, run_agent
 from cloudguard.backends import MockBackend, ResourceGraphBackend
 from cloudguard.change_request import ChangeRequestError, draft_change_request, render_markdown
-from cloudguard.evals import agent_golden
+from cloudguard.evals import agent_golden, agent_runner
 from cloudguard.evals import retrieval as eval_retrieval
 from cloudguard.llm import GeminiClient, LLMClient, LLMError
 from cloudguard.models import GroundTruth
@@ -358,6 +359,22 @@ def main(argv: list[str] | None = None, llm: LLMClient | None = None) -> int:
     dc = sub.add_parser("draft-cr", help="draft a change request (Markdown) for a lock proposal; saved as a cr_drafted event")
     dc.add_argument("proposal_id")
 
+    ea = sub.add_parser("eval-agent", help="run the agent golden set (mock backend) and write evals/results/agent_<ts>.json")
+    ea.add_argument("--case", action="append", default=[], help="case id (repeatable); makes this a smoke run")
+    ea.add_argument("--limit", type=int, default=None, help="only the first N selected cases; makes this a smoke run")
+    ea.add_argument("--runs", type=int, default=agent_runner.DEFAULT_RUNS, help="runs per case (default 3); other values make this a smoke run")
+    ea.add_argument("--delay", type=float, default=agent_runner.DEFAULT_DELAY_S, help="seconds to sleep between runs (rate limits)")
+    ea.add_argument("--dry-run", action="store_true", help="print the run count and an estimated token count; call nothing")
+    ea.add_argument("--max-steps", type=int, default=DEFAULT_MAX_STEPS)
+    ea.add_argument("--golden", type=Path, default=agent_golden.DEFAULT_GOLDEN_PATH)
+    ea.add_argument("--ground-truth", type=Path, default=agent_golden.DEFAULT_GROUND_TRUTH_PATH)
+    ea.add_argument("--retrieval-golden", type=Path, default=agent_golden.DEFAULT_RETRIEVAL_GOLDEN_PATH)
+    ea.add_argument("--manifest", type=Path, default=agent_golden.DEFAULT_MANIFEST_PATH)
+    ea.add_argument("--snapshot", type=Path, default=DEFAULT_SNAPSHOT)
+    ea.add_argument("--prices", type=Path, default=agent_runner.DEFAULT_PRICES_PATH)
+    ea.add_argument("--index-dir", type=Path, default=rag_index.DEFAULT_INDEX_DIR)
+    ea.add_argument("--results-dir", type=Path, default=agent_runner.DEFAULT_RESULTS_DIR)
+
     vg = sub.add_parser("validate-agent-golden", help="check evals/agent_golden.jsonl against the ground truth, tools and corpus")
     vg.add_argument("--golden", type=Path, default=agent_golden.DEFAULT_GOLDEN_PATH)
     vg.add_argument("--ground-truth", type=Path, default=agent_golden.DEFAULT_GROUND_TRUTH_PATH)
@@ -368,6 +385,9 @@ def main(argv: list[str] | None = None, llm: LLMClient | None = None) -> int:
 
     if args.cmd == "validate-agent-golden":
         return agent_golden.cmd_validate(args)
+
+    if args.cmd == "eval-agent":
+        return agent_runner.cmd_eval_agent(args)
 
     if args.cmd == "llm-ping":
         return cmd_llm_ping()

@@ -18,6 +18,29 @@ def _tool_call_response(name: str, arguments: dict, **kwargs) -> LLMResponse:
     return LLMResponse(text=None, tool_calls=[ToolCall(id="c1", name=name, arguments=arguments)], **kwargs)
 
 
+def test_each_llm_calls_wall_time_is_recorded_in_order_and_sums_to_the_total(backend):
+    llm = FakeLLM([_tool_call_response("list_unattached_disks", {}), _tool_call_response("find_weak_tls", {}),
+                   LLMResponse(text="done")])
+    run = run_agent(llm, backend, "audit")
+    assert run.steps == len(run.llm_call_ms) == 3
+    assert all(ms >= 0 for ms in run.llm_call_ms) and sum(run.llm_call_ms) == pytest.approx(run.total_latency_ms)
+
+
+def test_a_run_that_stops_at_max_steps_still_has_one_time_per_call(backend):
+    script = [_tool_call_response("list_unattached_disks", {}) for _ in range(3)]
+    run = run_agent(FakeLLM(script), backend, "audit", max_steps=3)
+    assert run.stopped_reason == "max_steps" and len(run.llm_call_ms) == 3
+
+
+def test_thought_tokens_are_summed_separately_from_output_tokens(backend):
+    llm = FakeLLM([
+        _tool_call_response("list_unattached_disks", {}, usage=Usage(10, 2, thought_tokens=30)),
+        LLMResponse(text="done", usage=Usage(20, 5, thought_tokens=12)),
+    ])
+    run = run_agent(llm, backend, "disks?")
+    assert (run.total_input_tokens, run.total_output_tokens, run.total_thought_tokens) == (30, 7, 42)
+
+
 def test_stops_immediately_on_a_final_answer_with_no_tool_calls(backend):
     llm = FakeLLM([LLMResponse(text="Nothing to report.")])
 

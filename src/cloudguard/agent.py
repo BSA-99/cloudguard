@@ -45,8 +45,12 @@ class AgentRun:
     stopped_reason: str  # "final_answer" or "max_steps"
     total_input_tokens: int = 0
     total_output_tokens: int = 0
+    total_thought_tokens: int = 0  # thinking tokens, separate from total_output_tokens; billed at the output rate
     total_attempts: int = 0
     total_latency_ms: float = 0.0
+    # Wall time of each llm.generate() call in order (retries and backoff inside a call included);
+    # sums to total_latency_ms. Extra detail: the per-run wall clock stays the headline latency.
+    llm_call_ms: list[float] = field(default_factory=list)
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
     # Deduplicated findings from detector tools this run - the deterministic ground truth
     # of the run, independent of whatever the model's final prose claims. The CLI and any
@@ -137,9 +141,12 @@ def run_agent(
             run.steps = step
             start = time.perf_counter()
             response = llm.generate(messages, TOOL_SPECS)
-            run.total_latency_ms += (time.perf_counter() - start) * 1000
+            call_ms = (time.perf_counter() - start) * 1000
+            run.total_latency_ms += call_ms
+            run.llm_call_ms.append(call_ms)
             run.total_input_tokens += response.usage.input_tokens
             run.total_output_tokens += response.usage.output_tokens
+            run.total_thought_tokens += response.usage.thought_tokens
             run.total_attempts += response.attempts
 
             if not response.tool_calls:

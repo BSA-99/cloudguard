@@ -31,7 +31,10 @@ class ToolCall:
 @dataclass
 class Usage:
     input_tokens: int
+    # Visible output only (Gemini's candidates_token_count). Thinking tokens are reported by the
+    # API separately and are NOT in this number; they are billed at the output rate, so cost needs both.
     output_tokens: int
+    thought_tokens: int = 0  # Gemini's thoughts_token_count; 0 when the API reports none
 
 
 @dataclass
@@ -253,6 +256,7 @@ def _from_gemini_response(response: Any, attempts: int) -> LLMResponse:
         usage=Usage(
             input_tokens=(usage.prompt_token_count or 0) if usage else 0,
             output_tokens=(usage.candidates_token_count or 0) if usage else 0,
+            thought_tokens=(usage.thoughts_token_count or 0) if usage else 0,
         ),
         attempts=attempts,
         raw=response,

@@ -222,6 +222,28 @@ def test_non_retryable_error_is_not_retried(monkeypatch):
     assert exc_info.value.message == "bad request"
 
 
+def _usage_response(**usage_fields) -> types.GenerateContentResponse:
+    return types.GenerateContentResponse(
+        candidates=[types.Candidate(content=types.Content(role="model", parts=[types.Part(text="ok")]))],
+        usage_metadata=types.GenerateContentResponseUsageMetadata(**usage_fields),
+    )
+
+
+def test_thought_tokens_are_reported_separately_from_visible_output_tokens(monkeypatch):
+    client = GeminiClient(api_key="fake")
+    monkeypatch.setattr(client._client.models, "generate_content",
+                        lambda **kw: _usage_response(prompt_token_count=100, candidates_token_count=20, thoughts_token_count=300))
+    usage = client.generate([{"role": "user", "content": "hi"}], []).usage
+    assert (usage.input_tokens, usage.output_tokens, usage.thought_tokens) == (100, 20, 300)
+
+
+def test_missing_thought_token_count_is_zero(monkeypatch):
+    client = GeminiClient(api_key="fake")
+    monkeypatch.setattr(client._client.models, "generate_content",
+                        lambda **kw: _usage_response(prompt_token_count=767, candidates_token_count=14))
+    assert client.generate([{"role": "user", "content": "hi"}], []).usage.thought_tokens == 0
+
+
 def test_response_schema_becomes_json_mime_type_and_gemini_schema(monkeypatch):
     client = GeminiClient(api_key="fake")
     captured = {}

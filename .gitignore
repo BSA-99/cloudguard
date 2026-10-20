@@ -9,3 +9,5 @@ proposals.jsonl
 # Live-subscription artifacts contain your real subscription ID. Keep them local.
 ground_truth.live.json
 mock/live*.json
+# Agent-eval smoke runs are not reported (evals/RESULTS.md); keep them local.
+evals/results/agent_smoke_*.json

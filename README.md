@@ -299,6 +299,21 @@ and that no builder case was hand-edited). To add your own cases, append lines w
 - Naming an already-locked group in an answer is fine, so that case has no `forbidden_ids`; its assertion is that no proposal exists at the end.
 - The five out-of-scope cases keep the `source` of the retrieval-golden queries they reuse (`human`, `human-edited`), not `claude-drafted`.
 
+### Running the agent eval
+
+```bash
+cloudguard eval-agent --dry-run                 # run count + rough token estimate; calls nothing, needs no key
+cloudguard eval-agent --case sd-disks-1 --runs 1   # a smoke run (needs GEMINI_API_KEY); not reported
+cloudguard eval-agent                           # the official run: all cases x 3 runs, once (see evals/RESULTS.md)
+```
+
+Each run executes in its own child process with a fresh proposals file and audit log, killed at 300 s.
+Scoring is rule-based and pure (`evals/agent_eval.py`); results go to `evals/results/agent_<ts>.json` with every
+run's tool calls, answer, pending proposals, tokens, attempts and two latencies (`run_ms` inside the child around
+`run_agent`, `total_ms` measured by the parent including process startup). Only the full selection is official, and
+it refuses to run on a dirty tree or a changed golden set; anything else writes a git-ignored `agent_smoke_<ts>.json`.
+Dollar cost appears only when `evals/prices.json` has a complete entry (prices, source URL, date) for the model.
+
 ## NOTICE — third-party content
 
 `corpus/raw/` contains documentation fetched from these public Microsoft repositories, under
