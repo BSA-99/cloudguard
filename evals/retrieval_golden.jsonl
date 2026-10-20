@@ -22,3 +22,7 @@
 {"query": "Make sure all the new resource groups created have a delete lock and apply the locks on the ones that currently exist", "expected_articles": ["policy-effect-deploy-if-not-exists", "policy-remediate-resources"], "source": "human"}
 {"query": "Why can't my pipeline delete old deployments in a resource group anymore?", "expected_articles": ["locks-overview"], "expected_sections": ["considerations-before-applying-your-locks"], "source": "human"}
 {"query": "why is an azure function app returning 503 out of nowhere", "expected_articles": [], "source": "human", "category": "out_of_scope"}
+{"query": "Why the AKS node pool is stuck in a failed state after scaling it up?", "expected_articles": [], "source": "human-edited", "category": "out_of_scope"}
+{"query": "how is it possible to rotate cosmo db account keys without any downtime", "expected_articles": [], "source": "human-edited", "category": "out_of_scope"}
+{"query": "Add a Front Door WAF custom rule to block traffic from one specific country.", "expected_articles": [], "source": "human-edited", "category": "out_of_scope"}
+{"query": "Azure SQL database is hitting DTU limits during the nightly batch job.", "expected_articles": [], "source": "human-edited", "category": "out_of_scope"}

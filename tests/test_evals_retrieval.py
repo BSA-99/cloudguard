@@ -173,6 +173,43 @@ def test_aggregate_overall_means_and_per_source_breakdown():
     assert report.by_source["human"].hit_at_3 == 1.0
 
 
+def test_aggregate_groups_on_whatever_source_strings_appear_in_first_seen_order():
+    """No source name is special: a third (or fourth, or made-up) label gets its own row."""
+    sources = ["claude-drafted", "human-edited", "human", "human-edited", "some-new-label"]
+    golden = [_golden(f"q{i}", ["a"], src) for i, src in enumerate(sources)]
+    scores = [score_ranking(f"q{i}", src, [("a", None, 0.9)], ["a"], None) for i, src in enumerate(sources)]
+
+    report = aggregate(golden, scores)
+
+    assert list(report.by_source) == ["claude-drafted", "human-edited", "human", "some-new-label"]
+    assert report.by_source["human-edited"].num_queries == 2
+    assert report.by_source["some-new-label"].num_queries == 1
+    assert sum(b.num_queries for b in report.by_source.values()) == report.overall.num_queries == 5
+
+
+def test_aggregate_source_present_only_on_out_of_scope_queries_has_no_by_source_row():
+    golden = [_golden("q1", ["a"], "claude-drafted"), _golden("q2", [], "human-edited", category="out_of_scope")]
+    scores = [
+        score_ranking("q1", "claude-drafted", [("a", None, 0.9)], ["a"], None),
+        score_ranking("q2", "human-edited", [("x", None, 0.5)], [], None, category="out_of_scope"),
+    ]
+
+    report = aggregate(golden, scores)
+
+    assert list(report.by_source) == ["claude-drafted"]
+    assert report.out_of_scope[0]["source"] == "human-edited"
+
+
+def test_load_golden_accepts_arbitrary_source_strings(tmp_path):
+    path = tmp_path / "g.jsonl"
+    path.write_text(
+        json.dumps({"query": "a", "expected_articles": ["x"], "source": "human-edited"}) + "\n"
+        + json.dumps({"query": "b", "expected_articles": ["x"], "source": "anything at all"}) + "\n",
+        encoding="utf-8",
+    )
+    assert [g.source for g in load_golden(path)] == ["human-edited", "anything at all"]
+
+
 def test_aggregate_misses_list_only_contains_non_hit_at_3_queries():
     golden = [_golden("hit", ["a"], "human"), _golden("miss", ["a"], "human")]
     scores = [

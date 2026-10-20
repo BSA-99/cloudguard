@@ -204,7 +204,7 @@ Resource Graph, disks, TLS, RBAC, identity, tagging/cost; a few deliberately wor
 differently from the docs, e.g. "stop someone deleting prod by mistake") — each line is
 `{query, expected_articles, expected_sections?, source, category?}`, every id/slug
 verified against `corpus/index/chunks.jsonl`, not written from memory. `source` is
-`claude-drafted` or `human`, so scores can be split by who wrote the query. `category`
+a free-form label such as `claude-drafted`, `human` or `human-edited` (the by-source report groups on whatever labels appear), so scores can be split by who wrote the query. `category`
 defaults to `in_scope`; a line can instead be `"category": "out_of_scope"` with
 `expected_articles: []` for a question the agent shouldn't be answering from this corpus
 at all (e.g. something with no governance/security content) — those are excluded from

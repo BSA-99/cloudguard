@@ -43,7 +43,7 @@ after they are measured.
       printed by `build-index`
 - [x] Retrieval eval: `evals/retrieval_golden.jsonl` (21 queries, proposed by Claude, reviewed/edited by the
       human before scoring, every id/slug verified against `corpus/index/chunks.jsonl`; `source` field
-      (`claude-drafted`/`human`) and optional `category: out_of_scope` tracked per line); `cloudguard
+      (free-form label, e.g. `claude-drafted`/`human`/`human-edited`; by-source metrics group on whatever appears) and optional `category: out_of_scope` tracked per line); `cloudguard
       eval-retrieval [--k 5]` reports article-level hit@1/3/5 + MRR (deduped by `article_id` first) and
       section-level hit@3 where `expected_sections` is given, split by `source`; excludes `out_of_scope`
       queries from those metrics and reports them separately with their top-1 score, plus the

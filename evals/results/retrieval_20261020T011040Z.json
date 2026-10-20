@@ -1,0 +1,631 @@
+{
+  "timestamp": "2026-10-20T01:10:40.461062+00:00",
+  "k": 5,
+  "model_name": "BAAI/bge-small-en-v1.5",
+  "index_meta": {
+    "manifest_hash": "56a12dac95a86320e44172061446be49782647f3d06876acd06b7e96df080581",
+    "model_name": "BAAI/bge-small-en-v1.5",
+    "chunk_count": 359,
+    "built_at": "2026-10-19T20:26:37.649354+00:00"
+  },
+  "corpus_repos": [
+    {
+      "repo": "MicrosoftDocs/azure-docs",
+      "commit_sha": "8f89cc8a3023d185c2d965e924d5b4d22159ef45",
+      "license": "CC-BY-4.0",
+      "attribution": "Content fetched from the MicrosoftDocs/azure-docs GitHub repository (https://github.com/MicrosoftDocs/azure-docs), \u00a9 Microsoft Corporation, licensed under Creative Commons Attribution 4.0 International (CC BY 4.0) per that repository's own LICENSE file: https://github.com/MicrosoftDocs/azure-docs/blob/8f89cc8a3023d185c2d965e924d5b4d22159ef45/LICENSE. Fetched verbatim at the pinned commit; no modifications made to the article text."
+    },
+    {
+      "repo": "MicrosoftDocs/azure-compute-docs",
+      "commit_sha": "c21e8e8229e33073fe93faa58a415b64279f3a44",
+      "license": "CC-BY-4.0",
+      "attribution": "Content fetched from the MicrosoftDocs/azure-compute-docs GitHub repository (https://github.com/MicrosoftDocs/azure-compute-docs), \u00a9 Microsoft Corporation, licensed under Creative Commons Attribution 4.0 International (CC BY 4.0) per that repository's own LICENSE file: https://github.com/MicrosoftDocs/azure-compute-docs/blob/c21e8e8229e33073fe93faa58a415b64279f3a44/LICENSE. Fetched verbatim at the pinned commit; no modifications made to the article text."
+    },
+    {
+      "repo": "MicrosoftDocs/entra-docs",
+      "commit_sha": "8d7c7ea1c9a7bc547e6077cb3703227f2e08b043",
+      "license": "MIT",
+      "attribution": "Content fetched from the MicrosoftDocs/entra-docs GitHub repository (https://github.com/MicrosoftDocs/entra-docs), \u00a9 Microsoft Corporation. Unlike its sibling docs repos, this repository's own LICENSE file states the MIT License (verified by reading the file, not assumed from the other repos' CC-BY-4.0 pattern): https://github.com/MicrosoftDocs/entra-docs/blob/8d7c7ea1c9a7bc547e6077cb3703227f2e08b043/LICENSE. Fetched verbatim at the pinned commit; no modifications made to the article text."
+    },
+    {
+      "repo": "MicrosoftDocs/cloud-adoption-framework",
+      "commit_sha": "5c44a2accff2018eba5dd738b648eef4c9db179b",
+      "license": "CC-BY-4.0",
+      "attribution": "Content fetched from the MicrosoftDocs/cloud-adoption-framework GitHub repository (https://github.com/MicrosoftDocs/cloud-adoption-framework), \u00a9 Microsoft Corporation, licensed under Creative Commons Attribution 4.0 International (CC BY 4.0) per that repository's own LICENSE file: https://github.com/MicrosoftDocs/cloud-adoption-framework/blob/5c44a2accff2018eba5dd738b648eef4c9db179b/LICENSE. Fetched verbatim at the pinned commit; no modifications made to the article text."
+    }
+  ],
+  "git_commit": "f1b9994b41562526a2a6ad1b2572a915120cb270",
+  "overall": {
+    "num_queries": 23,
+    "hit@1": 0.7826,
+    "hit@3": 1.0,
+    "hit@5": 1.0,
+    "mrr": 0.8841,
+    "section_hit@3": 0.5385,
+    "section_eval_count": 13
+  },
+  "by_source": {
+    "claude-drafted": {
+      "num_queries": 21,
+      "hit@1": 0.8095,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 0.8968,
+      "section_hit@3": 0.5833,
+      "section_eval_count": 12
+    },
+    "human": {
+      "num_queries": 2,
+      "hit@1": 0.5,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 0.75,
+      "section_hit@3": 0.0,
+      "section_eval_count": 1
+    }
+  },
+  "misses_top3": [],
+  "top1_score_stats": {
+    "min": 0.6398552656173706,
+    "median": 0.7924175262451172,
+    "max": 0.8701227307319641
+  },
+  "out_of_scope": [
+    {
+      "query": "why is an azure function app returning 503 out of nowhere",
+      "source": "human",
+      "top1_score": 0.6532599925994873
+    },
+    {
+      "query": "Why the AKS node pool is stuck in a failed state after scaling it up?",
+      "source": "human-edited",
+      "top1_score": 0.6385258436203003
+    },
+    {
+      "query": "how is it possible to rotate cosmo db account keys without any downtime",
+      "source": "human-edited",
+      "top1_score": 0.6442036032676697
+    },
+    {
+      "query": "Add a Front Door WAF custom rule to block traffic from one specific country.",
+      "source": "human-edited",
+      "top1_score": 0.6141119003295898
+    },
+    {
+      "query": "Azure SQL database is hitting DTU limits during the nightly batch job.",
+      "source": "human-edited",
+      "top1_score": 0.6837085485458374
+    }
+  ],
+  "per_query": [
+    {
+      "query": "How do I lock a resource group so it can't be deleted?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "locks-overview"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "locks-overview",
+        "policy-remediate-resources",
+        "resource-graph-overview"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.8155811429023743
+    },
+    {
+      "query": "Who has permission to create or remove a resource lock?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "locks-overview"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "locks-overview",
+        "policy-remediate-resources",
+        "identity-managed-identities-overview-for-developers"
+      ],
+      "section_hit_at_3": true,
+      "top1_score": 0.8041459321975708
+    },
+    {
+      "query": "How do I stop someone deleting prod by mistake?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "locks-overview"
+      ],
+      "hit_at_1": false,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 0.5,
+      "top3_article_ids": [
+        "policy-assign-portal",
+        "locks-overview",
+        "disks-find-unattached"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.6398552656173706
+    },
+    {
+      "query": "Does a lock on a resource group also apply to the resources inside it?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "locks-overview"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "locks-overview",
+        "policy-effect-deploy-if-not-exists",
+        "policy-overview"
+      ],
+      "section_hit_at_3": false,
+      "top1_score": 0.807172417640686
+    },
+    {
+      "query": "Can a CanNotDelete lock break deployments or backups?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "locks-overview"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "locks-overview",
+        "storage-security-blobs",
+        "storage-security-require-secure-transfer"
+      ],
+      "section_hit_at_3": true,
+      "top1_score": 0.7735846042633057
+    },
+    {
+      "query": "How do I enforce resource group locks automatically with Azure Policy?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "policy-effect-deploy-if-not-exists",
+        "locks-overview"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "locks-overview",
+        "governance-caf-enforce-policies",
+        "storage-tls-minimum-version"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.8188770413398743
+    },
+    {
+      "query": "How do I see which resources are non-compliant with a policy assignment?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "policy-assign-portal"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "policy-assign-portal",
+        "policy-remediate-resources",
+        "policy-overview"
+      ],
+      "section_hit_at_3": true,
+      "top1_score": 0.8110791444778442
+    },
+    {
+      "query": "What does the DeployIfNotExists policy effect actually do?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "policy-effect-deploy-if-not-exists"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "policy-effect-deploy-if-not-exists",
+        "policy-remediate-resources",
+        "policy-effect-basics"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.8571797013282776
+    },
+    {
+      "query": "How do I automatically remediate resources that fail a policy?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "policy-remediate-resources"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "policy-remediate-resources",
+        "policy-overview",
+        "policy-assign-portal"
+      ],
+      "section_hit_at_3": false,
+      "top1_score": 0.7475842237472534
+    },
+    {
+      "query": "Give me a sample Resource Graph query that lists storage accounts",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "resource-graph-starter-samples"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "resource-graph-starter-samples",
+        "storage-tls-minimum-version",
+        "resource-graph-overview"
+      ],
+      "section_hit_at_3": false,
+      "top1_score": 0.7924175262451172
+    },
+    {
+      "query": "How do I find managed disks that aren't attached to any VM?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "disks-find-unattached"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "disks-find-unattached",
+        "disks-types",
+        "disks-understand-billing"
+      ],
+      "section_hit_at_3": false,
+      "top1_score": 0.7362834811210632
+    },
+    {
+      "query": "Am I still charged for a managed disk after its VM is deleted?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "disks-understand-billing",
+        "disks-find-unattached"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "disks-understand-billing",
+        "disks-types",
+        "disks-find-unattached"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.7584614753723145
+    },
+    {
+      "query": "Find the disks that are just sitting there costing us money for no reason",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "disks-find-unattached",
+        "cost-mgt-best-practices"
+      ],
+      "hit_at_1": false,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 0.5,
+      "top3_article_ids": [
+        "disks-understand-billing",
+        "disks-find-unattached",
+        "disks-types"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.7060040235519409
+    },
+    {
+      "query": "How do I set the minimum TLS version required on a storage account?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "storage-tls-minimum-version"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "storage-tls-minimum-version",
+        "storage-tls-migrate-to-tls2",
+        "storage-tls-client-version"
+      ],
+      "section_hit_at_3": true,
+      "top1_score": 0.8701227307319641
+    },
+    {
+      "query": "How do I check which TLS version my clients are actually using against storage?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "storage-tls-client-version",
+        "storage-tls-minimum-version"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "storage-tls-minimum-version",
+        "storage-tls-migrate-to-tls2",
+        "storage-tls-client-version"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.8197816610336304
+    },
+    {
+      "query": "We got a notice that old TLS versions are being retired \u2014 what do we need to change?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "storage-tls-migrate-to-tls2",
+        "storage-tls-minimum-version"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "storage-tls-migrate-to-tls2",
+        "storage-tls-minimum-version",
+        "storage-tls-client-version"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.7577886581420898
+    },
+    {
+      "query": "What permissions does the built-in Reader role actually grant?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "rbac-reader-role"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "rbac-reader-role",
+        "rbac-overview",
+        "storage-tls-minimum-version"
+      ],
+      "section_hit_at_3": true,
+      "top1_score": 0.7460672855377197
+    },
+    {
+      "query": "Should I assign Azure roles to individual users or to groups?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "rbac-best-practices"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "rbac-best-practices",
+        "rbac-overview",
+        "policy-remediate-resources"
+      ],
+      "section_hit_at_3": true,
+      "top1_score": 0.8614078760147095
+    },
+    {
+      "query": "What is a managed identity and when should I use one instead of a service principal?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "identity-managed-identities-overview"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "identity-managed-identities-overview",
+        "identity-managed-identities-overview-for-developers",
+        "policy-remediate-resources"
+      ],
+      "section_hit_at_3": true,
+      "top1_score": 0.8160668015480042
+    },
+    {
+      "query": "How can a GitHub Actions pipeline authenticate to Azure without storing a secret?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "identity-workload-identity-federation"
+      ],
+      "hit_at_1": false,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 0.3333333333333333,
+      "top3_article_ids": [
+        "identity-managed-identities-overview-for-developers",
+        "storage-security-require-secure-transfer",
+        "identity-workload-identity-federation"
+      ],
+      "section_hit_at_3": false,
+      "top1_score": 0.7370232343673706
+    },
+    {
+      "query": "How do I make sure every resource has an owner tag so we can track cost accountability?",
+      "source": "claude-drafted",
+      "category": "in_scope",
+      "expected_articles": [
+        "tagging-tag-resources",
+        "cost-mgt-best-practices"
+      ],
+      "hit_at_1": false,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 0.5,
+      "top3_article_ids": [
+        "tagging-caf-resource-tagging",
+        "cost-mgt-best-practices",
+        "tagging-tag-resources"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.7747323513031006
+    },
+    {
+      "query": "Make sure all the new resource groups created have a delete lock and apply the locks on the ones that currently exist",
+      "source": "human",
+      "category": "in_scope",
+      "expected_articles": [
+        "policy-effect-deploy-if-not-exists",
+        "policy-remediate-resources"
+      ],
+      "hit_at_1": false,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 0.5,
+      "top3_article_ids": [
+        "locks-overview",
+        "policy-effect-deploy-if-not-exists",
+        "storage-security-blobs"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.8021072745323181
+    },
+    {
+      "query": "Why can't my pipeline delete old deployments in a resource group anymore?",
+      "source": "human",
+      "category": "in_scope",
+      "expected_articles": [
+        "locks-overview"
+      ],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "top3_article_ids": [
+        "locks-overview",
+        "policy-effect-deploy-if-not-exists",
+        "policy-assign-portal"
+      ],
+      "section_hit_at_3": false,
+      "top1_score": 0.7366195917129517
+    },
+    {
+      "query": "why is an azure function app returning 503 out of nowhere",
+      "source": "human",
+      "category": "out_of_scope",
+      "expected_articles": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "hit_at_5": null,
+      "reciprocal_rank": null,
+      "top3_article_ids": [
+        "resource-graph-starter-samples",
+        "policy-remediate-resources",
+        "storage-tls-minimum-version"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.6532599925994873
+    },
+    {
+      "query": "Why the AKS node pool is stuck in a failed state after scaling it up?",
+      "source": "human-edited",
+      "category": "out_of_scope",
+      "expected_articles": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "hit_at_5": null,
+      "reciprocal_rank": null,
+      "top3_article_ids": [
+        "locks-overview",
+        "storage-tls-minimum-version",
+        "policy-remediate-resources"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.6385258436203003
+    },
+    {
+      "query": "how is it possible to rotate cosmo db account keys without any downtime",
+      "source": "human-edited",
+      "category": "out_of_scope",
+      "expected_articles": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "hit_at_5": null,
+      "reciprocal_rank": null,
+      "top3_article_ids": [
+        "locks-overview",
+        "rbac-best-practices",
+        "identity-managed-identities-overview"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.6442036032676697
+    },
+    {
+      "query": "Add a Front Door WAF custom rule to block traffic from one specific country.",
+      "source": "human-edited",
+      "category": "out_of_scope",
+      "expected_articles": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "hit_at_5": null,
+      "reciprocal_rank": null,
+      "top3_article_ids": [
+        "governance-caf-enforce-policies",
+        "storage-tls-minimum-version",
+        "policy-overview"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.6141119003295898
+    },
+    {
+      "query": "Azure SQL database is hitting DTU limits during the nightly batch job.",
+      "source": "human-edited",
+      "category": "out_of_scope",
+      "expected_articles": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "hit_at_5": null,
+      "reciprocal_rank": null,
+      "top3_article_ids": [
+        "disks-understand-billing",
+        "storage-tls-minimum-version",
+        "disks-types"
+      ],
+      "section_hit_at_3": null,
+      "top1_score": 0.6837085485458374
+    }
+  ]
+}
