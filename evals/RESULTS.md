@@ -85,3 +85,82 @@ single threshold.
 - BM25-only results are reported for context and are not part of the decision rule.
 - The decision rule is applied to the first run unless a recorded second run states, with reasons
   written down before its numbers are read, why it supersedes the first.
+
+## Results: hybrid retrieval (BM25 + vector), 2026-10-20
+
+**Outcome: null. Vector-only stays the default.** Hybrid did not improve section hit@3 and it failed
+the hit@3 guardrail.
+
+**Provenance.**
+- Implementation commit: `7b3d2b03da2cd843bceff156c4d489782df0f294` (`7b3d2b0`).
+- Gate: `python -m cloudguard.evals.baseline_check` was re-run on that commit before the bm25 and
+  hybrid runs: vector mode reproduces the baseline exactly (max per-query top-1 score difference 0).
+- Results files compared (all k=5, `BAAI/bge-small-en-v1.5`, golden set v1.2, 28 queries: 23 in-scope, 5 out-of-scope):
+
+  | mode | file | `git_commit` recorded in the file |
+  |---|---|---|
+  | vector (baseline) | `evals/results/retrieval_20261020T011040Z.json` | `f1b9994` (pre-dates the implementation; frozen) |
+  | bm25 | `evals/results/retrieval_20261020T013112Z.json` | `7b3d2b0` |
+  | hybrid | `evals/results/retrieval_20261020T013113Z.json` | `7b3d2b0` |
+
+- Each of bm25 and hybrid was run exactly once. No re-runs, no parameter changes, no second run.
+
+**Metrics** (in-scope queries, n=23; section hit@3 is over the 13 queries that have `expected_sections`):
+
+| metric | vector | hybrid | bm25 (context only) |
+|---|---|---|---|
+| **section hit@3 (primary)** | **7/13** | **7/13** | 4/13 |
+| article hit@3 | 23/23 | 22/23 | 20/23 |
+| article hit@1 | 18/23 | 19/23 | 17/23 |
+| MRR | 0.8841 | 0.8913 | 0.8080 |
+
+**Decision rule, applied mechanically.**
+
+| condition | requirement | observed | result |
+|---|---|---|---|
+| section hit@3 improves | at least +2 queries over vector | 7/13 vs 7/13: +0 | **not met** |
+| guardrail: hit@3 stays 1.00 | 23/23 | 22/23 (0.9565) | **fails** |
+| guardrail: hit@1 drops by at most 1 query | drop <= 1 | 18/23 to 19/23: +1 | holds |
+
+Hybrid becomes the default only if the improvement is met and both guardrails hold. Neither the
+improvement nor the first guardrail holds, so the result is recorded as null and the default mode
+is unchanged (`rag.index.DEFAULT_MODE = "vector"`).
+
+**Queries that flipped, hybrid vs vector.**
+
+Section hit@3 (net 0: one lost, one gained):
+- lost: "What is a managed identity and when should I use one instead of a service principal?"
+- gained: "How can a GitHub Actions pipeline authenticate to Azure without storing a secret?"
+
+Article hit@1:
+- gained: "Find the disks that are just sitting there costing us money for no reason"
+- gained: "How do I make sure every resource has an owner tag so we can track cost accountability?"
+- lost: "What permissions does the built-in Reader role actually grant?"
+
+Article hit@3 (this is the guardrail failure):
+- lost: "Make sure all the new resource groups created have a delete lock and apply the locks on the ones that currently exist" (source: `human`). Expected `policy-effect-deploy-if-not-exists` or `policy-remediate-resources`. Vector top 3: `locks-overview`, `policy-effect-deploy-if-not-exists`, `storage-security-blobs`. Hybrid top 3: `locks-overview`, `storage-security-blobs`, `tagging-tag-resources`.
+- no query gained article hit@3 (vector already had 23/23).
+
+**Queries that flipped, bm25 vs vector** (context only; bm25 is not part of the decision):
+- article hit@1 lost: "Who has permission to create or remove a resource lock?"; "How do I enforce resource group locks automatically with Azure Policy?"; "Give me a sample Resource Graph query that lists storage accounts"; "What permissions does the built-in Reader role actually grant?"
+- article hit@1 gained: "Find the disks that are just sitting there costing us money for no reason"; "How can a GitHub Actions pipeline authenticate to Azure without storing a secret?"; "How do I make sure every resource has an owner tag so we can track cost accountability?"
+- article hit@3 lost (3 queries, so 20/23): "How do I stop someone deleting prod by mistake?"; "What permissions does the built-in Reader role actually grant?"; the same `human` delete-lock query as above.
+- section hit@3 lost: "Who has permission to create or remove a resource lock?"; "How do I set the minimum TLS version required on a storage account?"; "What permissions does the built-in Reader role actually grant?"; "What is a managed identity and when should I use one instead of a service principal?"
+- section hit@3 gained: "Why can't my pipeline delete old deployments in a resource group anymore?" (`human`)
+
+**Out-of-scope queries (5), top-1 in each mode's own scale next to the vector cosine.** The baseline
+file pre-dates `vector_top1_cosine`; its `top1_score` is the cosine.
+
+| vector cosine (= vector top-1) | bm25 top-1 | hybrid top-1 (RRF) |
+|---|---|---|
+| 0.6533 | 9.3811 | 0.0264 |
+| 0.6385 | 11.1678 | 0.0320 |
+| 0.6442 | 12.3693 | 0.0304 |
+| 0.6141 | 13.6640 | 0.0315 |
+| 0.6837 | 12.1003 | 0.0302 |
+
+The three scales are not comparable and no threshold is derived from this table.
+
+**Caveats.** The section hit@3 denominator is 13, so one query is 7.7 points, and the `human` source
+has only 1 section-eligible query. This is one run on one golden set with fixed parameters, as
+pre-registered; it says nothing about other parameter settings, which were deliberately not tried.
