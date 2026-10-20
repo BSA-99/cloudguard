@@ -13,17 +13,25 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Iterable
 
 import numpy as np
 
 from cloudguard.models import CorpusManifest
+from cloudguard.rag.bm25 import BM25Index
 from cloudguard.rag.chunk import WARN_WORDS, Chunk, word_count, chunk_article
 from cloudguard.rag.embed import Embedder
+from cloudguard.rag.fusion import RRF_K, fuse_rrf
 
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MANIFEST_PATH = ROOT / "docs" / "corpus_manifest.json"
 DEFAULT_RAW_DIR = ROOT / "corpus" / "raw"
 DEFAULT_INDEX_DIR = ROOT / "corpus" / "index"
+
+MODES = ("vector", "bm25", "hybrid")
+# Read at call time by search_default (so it can be monkeypatched). Stays "vector" until the
+# decision rule in evals/RESULTS.md is met.
+DEFAULT_MODE = "vector"
 
 
 class StaleIndexError(RuntimeError):
@@ -102,6 +110,28 @@ def _load_index(index_dir: Path) -> tuple[dict, list[dict], np.ndarray]:
     return meta, chunks, vectors
 
 
+def _take_with_cap(
+    ranked: Iterable[tuple[int, float]], chunks: list[dict], k: int, per_article_cap: int,
+) -> list[SearchResult]:
+    """Walk (chunk index, score) pairs best-first; keep at most per_article_cap chunks per
+    article and stop at k. The same cap-then-truncate step for every mode."""
+    results: list[SearchResult] = []
+    per_article: dict[str, int] = {}
+    for i, score in ranked:
+        c = chunks[i]
+        if per_article.get(c["article_id"], 0) >= per_article_cap:
+            continue
+        per_article[c["article_id"]] = per_article.get(c["article_id"], 0) + 1
+        results.append(SearchResult(
+            chunk_id=c["chunk_id"], article_id=c["article_id"], title=c["title"],
+            heading=c["heading_path"], topic=c["topic"], url=c["url"], text=c["text"],
+            score=score,
+        ))
+        if len(results) >= k:
+            break
+    return results
+
+
 def search(
     query: str,
     k: int,
@@ -109,7 +139,14 @@ def search(
     manifest_path: Path,
     index_dir: Path,
     per_article_cap: int = 2,
+    mode: str = "vector",
 ) -> list[SearchResult]:
+    """mode: "vector" (cosine; score is the cosine), "bm25" (score is the BM25 score) or
+    "hybrid" (RRF over the full vector and BM25 rankings; score is the RRF score). Scores from
+    different modes are on different scales and are not comparable."""
+    if mode not in MODES:
+        raise ValueError(f"unknown retrieval mode {mode!r}; expected one of {MODES}")
+
     meta, chunks, vectors = _load_index(index_dir)
 
     current_hash = manifest_hash(manifest_path)
@@ -122,29 +159,30 @@ def search(
     if not chunks:
         return []
 
+    if mode == "bm25":
+        # Built at load time from chunks.jsonl; the corpus is small, so no cache to go stale.
+        by_id = {c["chunk_id"]: i for i, c in enumerate(chunks)}
+        ranking = BM25Index.from_chunks(chunks).rank(query)
+        return _take_with_cap(((by_id[d], s) for d, s in ranking), chunks, k, per_article_cap)
+
     qvec = embedder.embed_query(query)
     qnorm = np.linalg.norm(qvec)
     if qnorm > 0:
         qvec = qvec / qnorm
 
     scores = vectors @ qvec
-    order = np.argsort(-scores)
 
-    results: list[SearchResult] = []
-    per_article: dict[str, int] = {}
-    for i in order:
-        c = chunks[i]
-        if per_article.get(c["article_id"], 0) >= per_article_cap:
-            continue
-        per_article[c["article_id"]] = per_article.get(c["article_id"], 0) + 1
-        results.append(SearchResult(
-            chunk_id=c["chunk_id"], article_id=c["article_id"], title=c["title"],
-            heading=c["heading_path"], topic=c["topic"], url=c["url"], text=c["text"],
-            score=float(scores[i]),
-        ))
-        if len(results) >= k:
-            break
-    return results
+    if mode == "vector":
+        order = np.argsort(-scores)
+        return _take_with_cap(((i, float(scores[i])) for i in order), chunks, k, per_article_cap)
+
+    # hybrid: fuse the complete vector ranking (ties by chunk_id, so the input is deterministic)
+    # with the BM25 ranking of matching chunks.
+    by_id = {c["chunk_id"]: i for i, c in enumerate(chunks)}
+    vector_ranking = [chunks[i]["chunk_id"] for i in sorted(range(len(chunks)), key=lambda i: (-float(scores[i]), chunks[i]["chunk_id"]))]
+    bm25_ranking = [d for d, _ in BM25Index.from_chunks(chunks).rank(query)]
+    fused = fuse_rrf([vector_ranking, bm25_ranking], k=RRF_K)
+    return _take_with_cap(((by_id[d], s) for d, s in fused), chunks, k, per_article_cap)
 
 
 def search_default(query: str, k: int = 3) -> list[SearchResult]:
@@ -153,4 +191,5 @@ def search_default(query: str, k: int = 3) -> list[SearchResult]:
         embedder=get_default_embedder(),
         manifest_path=DEFAULT_MANIFEST_PATH,
         index_dir=DEFAULT_INDEX_DIR,
+        mode=DEFAULT_MODE,
     )

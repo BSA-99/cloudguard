@@ -69,6 +69,10 @@ after they are measured.
       is optional, sandbox-only, scratch group with cleanup trap.
 
 ## Day 4 — Evals
+- [x] Hybrid retrieval implementation (pre-registered in `evals/RESULTS.md`): `rag/bm25.py`, `rag/fusion.py`
+      (`fuse_rrf`), `search(mode=vector|bm25|hybrid)`, `eval-retrieval --mode`, `vector_top1_cosine` in every mode.
+      Vector mode reproduces the frozen baseline exactly (`evals.baseline_check`). Default stays `vector`.
+- [ ] Hybrid experiment: run bm25 and hybrid once each, record under "Results" in `evals/RESULTS.md`, apply the decision rule
 - [ ] ~25-case golden set (questions + expected tools + expected IDs)
 - [ ] Metrics: precision/recall vs ground truth, tool-selection accuracy, hallucinated IDs, retrieval hit rate, LLM-judge rubric for CRs, cost per run, latency
 - [ ] Run in GitHub Actions (key as repo secret, manual trigger)

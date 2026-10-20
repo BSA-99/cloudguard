@@ -78,7 +78,10 @@ class QueryScore:
     reciprocal_rank: float | None
     top3_article_ids: list[str]
     section_hit_at_3: bool | None  # None when expected_sections wasn't given, or category is out_of_scope
-    top1_score: float | None  # the top-ranked (post-dedup) result's similarity score; None if no results
+    top1_score: float | None  # the top-ranked (post-dedup) result's score in the run's own mode; None if no results
+    # Top-1 cosine from a vector search, whatever the mode. Modes' scores are on different
+    # scales (cosine / BM25 / RRF), so this is the one number comparable across modes.
+    vector_top1_cosine: float | None = None
 
 
 def score_ranking(
@@ -88,6 +91,7 @@ def score_ranking(
     expected_articles: list[str],
     expected_sections: list[str] | None,
     category: str = "in_scope",
+    vector_top1_cosine: float | None = None,
 ) -> QueryScore:
     """Pure: takes an already-ranked list, nothing calls search() here."""
     deduped = _dedupe_by_article(ranked)
@@ -98,7 +102,7 @@ def score_ranking(
             query=query, source=source, category=category,
             hit_at_1=None, hit_at_3=None, hit_at_5=None, reciprocal_rank=None,
             top3_article_ids=[aid for aid, _, _ in deduped[:3]],
-            section_hit_at_3=None, top1_score=top1_score,
+            section_hit_at_3=None, top1_score=top1_score, vector_top1_cosine=vector_top1_cosine,
         )
 
     rank_of_hit = next((i + 1 for i, (aid, _, _) in enumerate(deduped) if aid in expected_articles), None)
@@ -122,6 +126,7 @@ def score_ranking(
         top3_article_ids=[aid for aid, _, _ in deduped[:3]],
         section_hit_at_3=section_hit_at_3,
         top1_score=top1_score,
+        vector_top1_cosine=vector_top1_cosine,
     )
 
 
@@ -146,6 +151,17 @@ class EvalReport:
         default_factory=lambda: {"min": None, "median": None, "max": None}
     )
     out_of_scope: list[dict[str, Any]] = field(default_factory=list)
+    vector_top1_score_stats: dict[str, float | None] = field(
+        default_factory=lambda: {"min": None, "median": None, "max": None}
+    )
+
+
+def _stats(values: list[float]) -> dict[str, float | None]:
+    return {
+        "min": min(values) if values else None,
+        "median": statistics.median(values) if values else None,
+        "max": max(values) if values else None,
+    }
 
 
 def _metric_block(scores: list[QueryScore]) -> MetricBlock:
@@ -186,18 +202,17 @@ def aggregate(golden: list[GoldenQuery], scores: list[QueryScore]) -> EvalReport
          "expected_articles": gq.expected_articles,
          "hit_at_1": s.hit_at_1, "hit_at_3": s.hit_at_3, "hit_at_5": s.hit_at_5,
          "reciprocal_rank": s.reciprocal_rank, "top3_article_ids": s.top3_article_ids,
-         "section_hit_at_3": s.section_hit_at_3, "top1_score": s.top1_score}
+         "section_hit_at_3": s.section_hit_at_3, "top1_score": s.top1_score,
+         "vector_top1_cosine": s.vector_top1_cosine}
         for gq, s in pairs
     ]
 
     top1_scores = [s.top1_score for s in in_scope_scores if s.top1_score is not None]
-    top1_score_stats = {
-        "min": min(top1_scores) if top1_scores else None,
-        "median": statistics.median(top1_scores) if top1_scores else None,
-        "max": max(top1_scores) if top1_scores else None,
-    }
+    top1_score_stats = _stats(top1_scores)
+    vector_top1_score_stats = _stats([s.vector_top1_cosine for s in in_scope_scores if s.vector_top1_cosine is not None])
     out_of_scope = [
-        {"query": s.query, "source": s.source, "top1_score": s.top1_score}
+        {"query": s.query, "source": s.source, "top1_score": s.top1_score,
+         "vector_top1_cosine": s.vector_top1_cosine}
         for _, s in pairs if s.category == OUT_OF_SCOPE
     ]
 
@@ -208,6 +223,7 @@ def aggregate(golden: list[GoldenQuery], scores: list[QueryScore]) -> EvalReport
         per_query=per_query,
         top1_score_stats=top1_score_stats,
         out_of_scope=out_of_scope,
+        vector_top1_score_stats=vector_top1_score_stats,
     )
 
 
@@ -217,12 +233,20 @@ def run_eval(
     manifest_path: Path,
     index_dir: Path,
     k: int = 5,
+    mode: str = "vector",
 ) -> EvalReport:
     scores = []
     for gq in golden:
-        results = search(gq.query, k=k, embedder=embedder, manifest_path=manifest_path, index_dir=index_dir)
+        results = search(gq.query, k=k, embedder=embedder, manifest_path=manifest_path, index_dir=index_dir, mode=mode)
         ranked = [(r.article_id, slug_of(r.url), r.score) for r in results]
+        if mode == "vector":
+            vector_top1 = results[0].score if results else None
+        else:  # the mode's own score isn't a cosine, so run one vector search for the comparable number
+            vector_results = search(gq.query, k=1, embedder=embedder, manifest_path=manifest_path,
+                                    index_dir=index_dir, mode="vector")
+            vector_top1 = vector_results[0].score if vector_results else None
         scores.append(score_ranking(
             gq.query, gq.source, ranked, gq.expected_articles, gq.expected_sections, category=gq.category,
+            vector_top1_cosine=vector_top1,
         ))
     return aggregate(golden, scores)

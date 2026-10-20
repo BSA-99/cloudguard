@@ -272,9 +272,28 @@ def test_aggregate_out_of_scope_report_has_query_source_and_top1_score():
     report = aggregate(golden, scores)
 
     assert report.out_of_scope == [
-        {"query": "oos1", "source": "human", "top1_score": 0.95},
-        {"query": "oos2", "source": "claude-drafted", "top1_score": None},
+        {"query": "oos1", "source": "human", "top1_score": 0.95, "vector_top1_cosine": None},
+        {"query": "oos2", "source": "claude-drafted", "top1_score": None, "vector_top1_cosine": None},
     ]
+
+
+def test_out_of_scope_report_carries_vector_cosine_next_to_the_modes_own_score():
+    golden = [_golden("oos", [], "human", category="out_of_scope")]
+    scores = [score_ranking("oos", "human", [("x", None, 0.0328)], [], None, category="out_of_scope",
+                            vector_top1_cosine=0.61)]
+    report = aggregate(golden, scores)
+    assert report.out_of_scope == [{"query": "oos", "source": "human", "top1_score": 0.0328, "vector_top1_cosine": 0.61}]
+
+
+def test_vector_top1_stats_are_over_in_scope_queries_only():
+    golden = [_golden("a", ["a"], "human"), _golden("b", ["a"], "human"), _golden("o", [], "human", category="out_of_scope")]
+    scores = [
+        score_ranking("a", "human", [("a", None, 0.03)], ["a"], None, vector_top1_cosine=0.8),
+        score_ranking("b", "human", [("a", None, 0.02)], ["a"], None, vector_top1_cosine=0.6),
+        score_ranking("o", "human", [("x", None, 0.01)], [], None, category="out_of_scope", vector_top1_cosine=0.1),
+    ]
+    stats = aggregate(golden, scores).vector_top1_score_stats
+    assert (stats["min"], stats["max"]) == (0.6, 0.8)
 
 
 def test_aggregate_top1_score_stats_computed_over_in_scope_only():

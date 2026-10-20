@@ -226,6 +226,15 @@ that produced it. The report also includes the min/median/max top-1 similarity s
 across in-scope queries, to help pick a score threshold that separates in-scope from
 out-of-scope questions.
 
+`--mode vector|bm25|hybrid` (default `vector`) selects the retriever: cosine over the embedding
+index, an in-repo BM25 (`rag/bm25.py`: k1=1.5, b=0.75, fixed tokenizer and stopword list), or
+reciprocal rank fusion of the two (`rag/fusion.py`, k=60). The mode and its parameters are recorded
+in the results JSON. Scores are on different scales (cosine / BM25 / RRF), so every mode also
+reports each query's top-1 vector cosine (`vector_top1_cosine`), the only number comparable across
+modes. `search_docs` always uses `rag.index.DEFAULT_MODE`, which stays `vector` unless the decision
+rule in `evals/RESULTS.md` is met. After touching the retrieval path, run
+`python -m cloudguard.evals.baseline_check` to confirm vector mode still reproduces the frozen baseline.
+
 Measured once, on the committed index, `bge-small-en-v1.5`, k=5 (21/21 `claude-drafted`,
 no `human` or `out_of_scope` queries yet):
 

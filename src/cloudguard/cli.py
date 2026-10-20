@@ -31,7 +31,9 @@ from cloudguard.change_request import ChangeRequestError, draft_change_request, 
 from cloudguard.evals import retrieval as eval_retrieval
 from cloudguard.llm import GeminiClient, LLMClient, LLMError
 from cloudguard.models import GroundTruth
+from cloudguard.rag import bm25
 from cloudguard.rag import index as rag_index
+from cloudguard.rag.fusion import RRF_K
 from cloudguard.tools import DETECTORS, REPO_ROOT, TOOL_SPECS, TOOLS
 
 DEFAULT_SNAPSHOT = REPO_ROOT / "mock" / "subscription_snapshot.json"
@@ -235,7 +237,7 @@ def cmd_eval_retrieval(args: argparse.Namespace) -> int:
 
     golden = load_golden(args.golden)
     embedder = FastEmbedder()
-    report = run_eval(golden, embedder, rag_index.DEFAULT_MANIFEST_PATH, rag_index.DEFAULT_INDEX_DIR, k=args.k)
+    report = run_eval(golden, embedder, rag_index.DEFAULT_MANIFEST_PATH, rag_index.DEFAULT_INDEX_DIR, k=args.k, mode=args.mode)
 
     index_meta = json.loads((rag_index.DEFAULT_INDEX_DIR / "meta.json").read_text(encoding="utf-8"))
     corpus_manifest = json.loads(rag_index.DEFAULT_MANIFEST_PATH.read_text(encoding="utf-8"))
@@ -255,6 +257,11 @@ def cmd_eval_retrieval(args: argparse.Namespace) -> int:
     out = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "k": args.k,
+        "mode": args.mode,
+        "retrieval_params": {
+            "bm25_k1": bm25.K1, "bm25_b": bm25.B, "rrf_k": RRF_K, "per_article_cap": 2,
+            "stopwords": sorted(bm25.STOPWORDS),
+        },
         "model_name": embedder.name,
         "index_meta": index_meta,
         "corpus_repos": corpus_manifest["repos"],
@@ -263,6 +270,7 @@ def cmd_eval_retrieval(args: argparse.Namespace) -> int:
         "by_source": {source: _fmt(block) for source, block in report.by_source.items()},
         "misses_top3": report.misses_top3,
         "top1_score_stats": report.top1_score_stats,
+        "vector_top1_score_stats": report.vector_top1_score_stats,
         "out_of_scope": report.out_of_scope,
         "per_query": report.per_query,
     }
@@ -272,7 +280,9 @@ def cmd_eval_retrieval(args: argparse.Namespace) -> int:
     out_path = args.results_dir / f"retrieval_{stamp}.json"
     out_path.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
 
+    scale = {"vector": "cosine", "bm25": "bm25", "hybrid": "rrf"}[args.mode]
     o = report.overall
+    print(f"mode: {args.mode}")
     print(f"queries: {o.num_queries}")
     print(f"hit@1={o.hit_at_1:.2f}  hit@3={o.hit_at_3:.2f}  hit@5={o.hit_at_5:.2f}  mrr={o.mrr:.3f}")
     if o.section_hit_at_3 is not None:
@@ -287,14 +297,19 @@ def cmd_eval_retrieval(args: argparse.Namespace) -> int:
 
     stats = report.top1_score_stats
     if stats["min"] is not None:
-        print(f"\ntop-1 score (in-scope): min={stats['min']:.4f}  median={stats['median']:.4f}  "
+        print(f"\ntop-1 score, {scale} (in-scope): min={stats['min']:.4f}  median={stats['median']:.4f}  "
               f"max={stats['max']:.4f}")
+    vstats = report.vector_top1_score_stats
+    if args.mode != "vector" and vstats["min"] is not None:
+        print(f"top-1 vector cosine (in-scope): min={vstats['min']:.4f}  median={vstats['median']:.4f}  "
+              f"max={vstats['max']:.4f}")
 
     if report.out_of_scope:
         print(f"\nOut-of-scope queries ({len(report.out_of_scope)}):")
         for o in report.out_of_scope:
             score_str = f"{o['top1_score']:.4f}" if o["top1_score"] is not None else "n/a"
-            print(f"  {o['query']!r} -> top1_score={score_str}")
+            cosine_str = f"{o['vector_top1_cosine']:.4f}" if o["vector_top1_cosine"] is not None else "n/a"
+            print(f"  {o['query']!r} -> top1 ({scale})={score_str}  vector top1 cosine={cosine_str}")
 
     print(f"\nwrote {out_path}")
     return 0
@@ -333,6 +348,8 @@ def main(argv: list[str] | None = None, llm: LLMClient | None = None) -> int:
 
     er = sub.add_parser("eval-retrieval", help="score rag.index.search() against evals/retrieval_golden.jsonl")
     er.add_argument("--k", type=int, default=5)
+    er.add_argument("--mode", choices=rag_index.MODES, default="vector",
+                    help="retrieval mode; scores differ in scale across modes (cosine / BM25 / RRF)")
     er.add_argument("--golden", type=Path, default=eval_retrieval.DEFAULT_GOLDEN_PATH)
     er.add_argument("--results-dir", type=Path, default=eval_retrieval.DEFAULT_RESULTS_DIR)
 
