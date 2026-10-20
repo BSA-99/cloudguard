@@ -73,7 +73,10 @@ after they are measured.
       (`fuse_rrf`), `search(mode=vector|bm25|hybrid)`, `eval-retrieval --mode`, `vector_top1_cosine` in every mode.
       Vector mode reproduces the frozen baseline exactly (`evals.baseline_check`). Default stays `vector`.
 - [ ] Hybrid experiment: run bm25 and hybrid once each, record under "Results" in `evals/RESULTS.md`, apply the decision rule
-- [ ] ~25-case golden set (questions + expected tools + expected IDs)
+- [x] Agent golden set: 26 builder cases + 7 `human` cases (`h-1`..`h-7`) in `evals/agent_golden.jsonl` (built by `evals/agent_golden.py` from `ground_truth.json` and
+      the retrieval golden; IDs never hand-typed), `cloudguard validate-agent-golden` (schema, tools, IDs, articles,
+      counts 6/2/4/2/4/3/5, builder match). Known limitations in the module docstring and README. No agent run yet;
+      commit it before any agent run (frozen, like the retrieval set).
 - [ ] Metrics: precision/recall vs ground truth, tool-selection accuracy, hallucinated IDs, retrieval hit rate, LLM-judge rubric for CRs, cost per run, latency
 - [ ] Run in GitHub Actions (key as repo secret, manual trigger)
 - [ ] One improvement with before/after numbers recorded in `evals/RESULTS.md`

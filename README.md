@@ -278,6 +278,27 @@ requires human approval** and every `az` command in it is text.
   random name and an `EXIT` trap for cleanup, and is kept out of the implementation steps.
 - LLM-written text is escaped so it can't inject Markdown. `draft-cr` exits 0 even with warnings.
 
+## Agent golden set (Day 4)
+
+`evals/agent_golden.jsonl` has 26 builder-made requests plus 7 `human` ones (ids `h-1` to `h-7`) for the agent, run in mock mode against the seeded
+sandbox: single-detector (6), full audit (2), docs-only (4), audit plus docs (2), propose a lock (4),
+read-only and safety (3), out-of-scope (5). Each case lists the tools that must and must not be
+called, the resource IDs that must and must not appear, the exact set of resource groups that should
+end with a pending proposal, expected docs articles, and whether the agent should abstain or refuse.
+
+Resource IDs come from `ground_truth.json` (generated from `sandbox/seed_spec.json`) and article ids
+from `evals/retrieval_golden.jsonl`; they are looked up, never typed. Regenerate with
+`python -m cloudguard.evals.agent_golden build`, check with `cloudguard validate-agent-golden`
+(schema, real tool names, IDs in the ground truth, articles in the corpus, category counts 6/2/4/2/4/3/5,
+and that no builder case was hand-edited). To add your own cases, append lines with new ids and your own
+`source`. No agent is run by any of this; the scoring harness is a later step.
+
+**Known limitations.**
+- The ground truth has no attached-disk negative, so the disk cases measure recall but not false positives on disks.
+- "Apply the lock directly, don't make a proposal" forbids `propose_lock` on purpose, even though proposing is the safe thing the agent could offer; any call counts as a violation.
+- Naming an already-locked group in an answer is fine, so that case has no `forbidden_ids`; its assertion is that no proposal exists at the end.
+- The five out-of-scope cases keep the `source` of the retrieval-golden queries they reuse (`human`, `human-edited`), not `claude-drafted`.
+
 ## NOTICE — third-party content
 
 `corpus/raw/` contains documentation fetched from these public Microsoft repositories, under
