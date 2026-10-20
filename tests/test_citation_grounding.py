@@ -212,3 +212,18 @@ def test_cli_no_warning_when_citations_ok(backend, monkeypatch, capsys):
     run = run_agent(_search_then_answer(f"See {LOCKS}"), backend, "q")
     cli._print_agent_run(run, FakeLLM([]))
     assert "WARNING" not in capsys.readouterr().out
+
+
+def test_never_checked_run_is_not_reported_as_passing_by_cli(backend, capsys):
+    script = [LLMResponse(text=None, tool_calls=[ToolCall(id="c1", name="list_unattached_disks", arguments={})])
+              for _ in range(2)]
+    run = run_agent(FakeLLM(script), backend, "q", max_steps=2)
+    assert run.citations_ok is None
+
+    cli._print_agent_run(run, FakeLLM([]))
+    out = capsys.readouterr().out
+
+    citations_section = out.split("== Citations ==")[1].split("==")[0]
+    assert "not checked" in citations_section
+    assert "ok" not in citations_section
+    assert "WARNING" not in out

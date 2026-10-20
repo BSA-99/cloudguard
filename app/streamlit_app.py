@@ -89,6 +89,22 @@ else:
         for rid in banner.ungrounded_ids:
             st.text(rid)
 
+    citations = view.citations_banner(run)
+    if citations.status == "failed":
+        st.warning("Citation warning: the answer cites learn.microsoft.com URLs that search_docs "
+                   "did not return this run. Treat them as unverified. The answer above is unchanged.")
+        for url in citations.ungrounded_urls:
+            st.text(url)
+    st.markdown("### Citations")
+    if citations.status == "not_checked":
+        st.info("Citations: not checked (no final answer)")
+    elif citations.status == "ok":
+        st.success(f"Citations: ok ({citations.cited_count} cited)")
+    else:
+        st.error("Citations: FAILED")
+    for url in citations.external_urls:
+        st.text(f"external (not checked): {url}")
+
     st.markdown("### Pending proposals")
     all_proposals = proposals.list_proposals()
     pending, decided = view.split_proposals(all_proposals)

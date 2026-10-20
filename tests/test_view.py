@@ -5,7 +5,7 @@ precision matters more (grouping, the raw-string test, the pending/decided split
 
 from __future__ import annotations
 
-from app.view import group_findings, grounding_banner, run_stats, split_proposals
+from app.view import citations_banner, group_findings, grounding_banner, run_stats, split_proposals
 from cloudguard.agent import run_agent
 from cloudguard.llm import FakeLLM, LLMResponse, ToolCall, Usage
 from cloudguard.models import Finding, FindingType, Severity
@@ -132,3 +132,32 @@ def test_run_stats_reports_every_field(backend):
         "attempts": 3,
         "latency_ms": round(run.total_latency_ms),
     }
+
+
+LEARN = "https://learn.microsoft.com/azure/azure-resource-manager/management/lock-resources"
+
+
+def test_citations_banner_ok_and_external_listed(backend):
+    run = run_agent(FakeLLM([LLMResponse(text="no links, see https://example.com")]), backend, "audit")
+    banner = citations_banner(run)
+    assert banner.status == "ok"
+    assert banner.external_urls == ["https://example.com"]
+    assert banner.ungrounded_urls == []
+
+
+def test_citations_banner_failed_lists_ungrounded_urls(backend):
+    run = run_agent(FakeLLM([LLMResponse(text=f"See {LEARN}")]), backend, "audit")
+    banner = citations_banner(run)
+    assert banner.status == "failed"
+    assert banner.ungrounded_urls == [LEARN]
+    assert run.final_answer == f"See {LEARN}"
+
+
+def test_citations_banner_none_is_not_checked_never_ok(backend):
+    script = [
+        LLMResponse(text=None, tool_calls=[ToolCall(id="c1", name="list_unattached_disks", arguments={})])
+        for _ in range(3)
+    ]
+    run = run_agent(FakeLLM(script), backend, "audit", max_steps=3)
+    assert run.citations_ok is None
+    assert citations_banner(run).status == "not_checked"

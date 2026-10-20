@@ -37,6 +37,22 @@ def grounding_banner(run: AgentRun) -> GroundingBanner:
     return GroundingBanner(status="failed", ungrounded_ids=list(run.ungrounded_ids))
 
 
+@dataclass
+class CitationsBanner:
+    status: Literal["ok", "failed", "not_checked"]
+    cited_count: int
+    ungrounded_urls: list[str]
+    external_urls: list[str]
+
+
+def citations_banner(run: AgentRun) -> CitationsBanner:
+    """None means the check never ran (no final answer) and must never read as passing."""
+    if run.citations_ok is None:
+        return CitationsBanner("not_checked", 0, [], [])
+    status: Literal["ok", "failed"] = "ok" if run.citations_ok else "failed"
+    return CitationsBanner(status, len(run.cited_urls), list(run.ungrounded_urls), list(run.external_urls))
+
+
 def split_proposals(proposals: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """(pending, decided), each in the order list_proposals() returned them."""
     pending = [p for p in proposals if p["status"] == "pending"]
