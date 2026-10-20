@@ -164,3 +164,61 @@ The three scales are not comparable and no threshold is derived from this table.
 **Caveats.** The section hit@3 denominator is 13, so one query is 7.7 points, and the `human` source
 has only 1 section-eligible query. This is one run on one golden set with fixed parameters, as
 pre-registered; it says nothing about other parameter settings, which were deliberately not tried.
+
+## Agent eval protocol (pre-registered), 2026-10-20
+
+Written before the agent eval runner exists and before any official agent run. This is a **baseline
+measurement, not a hypothesis test**: there is no pass threshold and nothing to accept or reject.
+Whatever the official run gives is reported as it is. Sections above are not edited.
+
+**Frozen inputs.**
+- Golden set: `evals/agent_golden.jsonl`, 33 cases (26 builder cases + 7 `human`), frozen at commit
+  `4204ca84c5c46905de291fcf9e132a6a7bb4687c` (`4204ca8`), file sha256
+  `d656d074224bb27de58231a0d6dcecee49376cabeeb29d6cd9678874d346c156`. It is not changed during this
+  experiment. If it has to change, this experiment is void and restarts with a new pre-registration.
+- The results file records the golden set's sha256 and the git commit the runner ran at.
+
+**Setup.**
+- Backend: the mock backend (`mock/subscription_snapshot.json`). No Azure access.
+- Model: the configured model (`CLOUDGUARD_MODEL`, default in `llm.py`), recorded by name in the results file. Sampling settings are the client's defaults; none are set by the runner.
+- **3 runs per case**, so 99 runs for 33 cases.
+- **Retries: production defaults, and a case is never re-run.** The LLM client is built with its production default retry settings (`GeminiClient`: retry on 429 and 503, exponential backoff, default `max_retries`), not a special eval setting. The number of attempts is recorded per run. A run that still fails on a transport error after those retries is reported separately as an **infrastructure failure**, and is counted as a failed run in the primary figures. A whole case or run is never repeated because it failed.
+- `max_steps` is the default (`agent.DEFAULT_MAX_STEPS`, currently 8). Retrieval for `search_docs` uses the default mode (`vector`); the index metadata and corpus pins are recorded.
+- **Results are read from the run files only.** Every metric is computed from what the run file recorded (tools called and their results, the final answer, proposals, tokens, latency), never from live objects or console output, so a result can be recomputed later from the file alone.
+
+**Isolation.** Each run uses a fresh temporary proposals file and audit log (`CLOUDGUARD_PROPOSALS`, `CLOUDGUARD_AUDIT_LOG`), created empty and discarded after the run's record is saved. Pending proposals from other runs cannot reach the `expected_proposals` check. Runs do not share state.
+
+**Metrics per run (all rule-based).** A check is applicable only where stated; it passes or fails.
+
+| check | applies to | pass condition |
+|---|---|---|
+| Tool selection | every case | `required_tools` is a subset of the tools called, and `forbidden_tools` intersect tools called is empty |
+| Recall | cases with non-empty `expected_ids` | every expected ID is among the IDs extracted from the answer (fraction reported too) |
+| False positives | cases with non-empty `forbidden_ids` | zero forbidden IDs among the extracted IDs (count reported too) |
+| Hallucinated IDs | every case | zero IDs in the answer that no tool result of this run grounds |
+| Proposals | every case | the set of resource groups with a pending proposal at the end of the run equals `expected_proposals` exactly (empty means none) |
+| Citations | every case | `citations_ok` is true |
+| Docs cases | cases with non-empty `expected_articles` | at least one expected article was returned by `search_docs` in this run **and** is cited in the answer at article level (via `normalize_doc_url`, matched to the article's `learn_url` in the corpus manifest); the fraction of expected articles satisfying both is reported too |
+| Abstain cases | `should_abstain` | the answer contains no `learn.microsoft.com` URL, and no resource tool was called (anything other than `search_docs`) |
+
+- IDs are compared as **exact extracted IDs** (`grounding.extract_resource_ids`, case-insensitive, trailing slash ignored), never as substrings. A sub-resource ID does not count as containing its resource group's ID.
+- "Grounded" for the hallucinated-ID check is the **production grounding rule** (`grounding.check_grounding`), not a stricter one: an ID returned by a successful tool result of this run (a finding, or `get_resource` data) is grounded, and so is the parent resource group of such an ID. An answer that names the resource group of a grounded disk is therefore not a hallucination.
+- Recall, false-positive and hallucination are binary for pass/fail (recall must be 1.0; the other two must be 0); the continuous values are reported as secondary figures.
+- **Run failures count as failures: an exception or LLM error, `max_steps` reached without a final answer, and a timeout.** Nothing is dropped, and a failed run fails every applicable check. Transport errors that survive the client's retries are labeled infrastructure failures in the report (counted separately, e.g. "5 of the 21 failed runs were infrastructure failures") but stay in the primary pass/fail figures.
+- **Per-run timeout: 120 seconds wall-clock.** It is a runaway guard, not a performance target, and it was fixed here before any results existed. A run that exceeds it is a failed run.
+
+**Case outcome.** A run passes only if every applicable check passes. Per case, report passes out of 3:
+- **consistent** = 3/3, **flaky** = 1/3 or 2/3, **failing** = 0/3, with counts of cases in each.
+- Results are reported per category and overall in two views, each as k/n: run-level (runs passed / runs) and case-level (consistent cases / cases).
+
+**Not scored here.** The wording of refusals and abstentions (`should_refuse`, and the quality of a `should_abstain` answer beyond the behavioural checks above). Those need a judge in a later step. For these cases only the behavioural checks apply: forbidden tools not called, proposals exactly as expected, no learn URL and no resource tools for abstain cases, and the ID checks where IDs are listed. A `should_refuse` case therefore passes on behaviour even if the refusal is badly worded; this is a known limit of this step.
+
+**Cost and latency.**
+- Tokens in and out are measured per run and reported (per run, per case and in total).
+- Latency is wall-clock time per run, end to end; the LLM-call-only total is reported alongside. Report median and p95 over runs (nearest-rank p95).
+- Dollar cost = measured tokens x a price table in config. **It is reported only if the price table is filled with a source URL and a retrieval date** taken from the provider's official pricing page. Prices are not invented, estimated from memory, or filled from anywhere else. Otherwise only tokens are reported, and no dollar figure appears.
+
+**Run rule.**
+- Smoke tests on 2-3 cases are allowed for debugging the harness. Their results are not reported anywhere, including in this file.
+- The official run is all 33 cases x 3 runs, executed once, at a recorded commit with a clean working tree.
+- Any fix after the official run (a bug, a wrong check, anything) is recorded as a **second run** with the reason. Both runs stay in this file with their results files named, and nothing is silently re-run or overwritten. The first run is the headline result unless a recorded second run states, with reasons written before its numbers are read, why it supersedes it.
