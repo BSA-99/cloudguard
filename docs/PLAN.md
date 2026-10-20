@@ -60,7 +60,13 @@ after they are measured.
       `ungrounded_urls`, `external_urls` (non-Learn hosts, listed but not graded) and `citations_ok`; these go
       on `AgentRun` and into the `grounding_check` audit entry. Failure is a visible CLI warning under the
       unchanged answer, not an exit-code change or a rewrite. Reusable for the change-request draft below.
-- [ ] Change-request draft: summary, risk, rollback, test plan, citations (URLs from retrieval only)
+- [x] Change-request draft (`change_request.py`, `cloudguard draft-cr <proposal_id>`): code writes the resource ID,
+      lock level, risk level, implementation/rollback/test commands (`shlex`-quoted); the LLM writes only summary,
+      business_justification, risk_narrative and impact via `response_schema` (one retry, then a clear error).
+      Untrusted text is delimited in the prompt and the tripwire scans the output; URLs the model writes are checked
+      by `check_citations`; "Reference documentation" lists the retrieved context. Stored as an append-only
+      `cr_drafted` event that `list_proposals()` ignores; Markdown output escapes LLM text; the delete-blocked check
+      is optional, sandbox-only, scratch group with cleanup trap.
 
 ## Day 4 — Evals
 - [ ] ~25-case golden set (questions + expected tools + expected IDs)

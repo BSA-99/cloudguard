@@ -243,6 +243,32 @@ by `article_id`, showed "How can a GitHub Actions pipeline authenticate to Azure
 storing a secret?" missing top 3 — that was a duplicate-chunk artifact of the same page
 occupying two rank slots, not a real retrieval gap, and the dedup fix resolved it.)
 
+## Change-request drafts (Day 3)
+
+```bash
+cloudguard --mock draft-cr <proposal_id>      # agent extra: needs GEMINI_API_KEY and a built index
+```
+
+Renders a Markdown change request for a lock proposal and saves it as a `cr_drafted` event in
+`proposals.jsonl` (append-only; the latest draft wins; `list_proposals()` ignores these events, so
+drafting never changes a proposal's status). Nothing is executed: the CR is marked **draft,
+requires human approval** and every `az` command in it is text.
+
+- **Code writes** the resource ID, lock level, risk level (from the finding's severity), the
+  implementation command (the proposal's own `suggested_command`, which is re-derived and compared
+  first), the rollback command and the verification command, all `shlex`-quoted.
+- **The LLM writes** only `summary`, `business_justification`, `risk_narrative` and `impact`, as
+  JSON matching a response schema, with retrieved docs as context. Invalid output is retried once,
+  then the draft fails with a clear error.
+- **Untrusted text** (names, tags, the proposal's reason) goes into the prompt only inside a delimited
+  block. The injection tripwire runs over the LLM's output, and flagged resources get a warning line.
+- **Reference documentation** lists what the model was given, not what it relied on. URLs the model
+  writes itself are checked against that same retrieved set (`grounding.check_citations`); ungrounded
+  ones are listed in a warning, never dropped.
+- The delete-blocked check is **optional, sandbox only**: it runs against a throwaway group with a
+  random name and an `EXIT` trap for cleanup, and is kept out of the implementation steps.
+- LLM-written text is escaped so it can't inject Markdown. `draft-cr` exits 0 even with warnings.
+
 ## NOTICE — third-party content
 
 `corpus/raw/` contains documentation fetched from these public Microsoft repositories, under

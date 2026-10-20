@@ -9,6 +9,7 @@
   cloudguard --mock agent "audit this subscription" [--max-steps N]
   cloudguard build-index                  # agent extra: embed the RAG corpus into corpus/index/
   cloudguard eval-retrieval [--k 5]        # agent extra: score retrieval against evals/retrieval_golden.jsonl
+  cloudguard --mock draft-cr <proposal_id> # agent extra: draft a change request for a lock proposal (Markdown)
 """
 
 from __future__ import annotations
@@ -23,8 +24,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from cloudguard import proposals
 from cloudguard.agent import AgentRun, DEFAULT_MAX_STEPS, run_agent
 from cloudguard.backends import MockBackend, ResourceGraphBackend
+from cloudguard.change_request import ChangeRequestError, draft_change_request, render_markdown
 from cloudguard.evals import retrieval as eval_retrieval
 from cloudguard.llm import GeminiClient, LLMClient, LLMError
 from cloudguard.models import GroundTruth
@@ -174,6 +177,38 @@ def cmd_agent(args: argparse.Namespace, backend, llm: LLMClient | None = None) -
     return 1 if (run.grounding_ok is False or run.stopped_reason == "max_steps") else 0
 
 
+def cmd_draft_cr(args: argparse.Namespace, backend, llm: LLMClient | None = None, retriever=None) -> int:
+    proposal = proposals.get_proposal(args.proposal_id)
+    if proposal is None:
+        print(f"no such proposal: {args.proposal_id}", file=sys.stderr)
+        return 2
+
+    # Read-only: re-run the lock detector to get the current finding for this group.
+    result = TOOLS["list_unlocked_resource_groups"](backend)
+    finding = next((f for f in result.findings if f.resource_id.lower() == proposal["resource_group_id"].lower()), None)
+    if finding is None:
+        print(f"{proposal['resource_group_id']} is no longer reported as an unlocked resource group; "
+              "nothing to draft a change request for.", file=sys.stderr)
+        return 2
+
+    if llm is None:
+        try:
+            llm = GeminiClient()
+        except RuntimeError as e:
+            sys.exit(str(e))
+    retriever = retriever or (lambda query, k: rag_index.search_default(query, k=k))
+
+    try:
+        cr = draft_change_request(proposal, finding, llm, retriever)
+    except (ChangeRequestError, LLMError, rag_index.StaleIndexError) as e:
+        print(f"could not draft change request: {e}", file=sys.stderr)
+        return 2
+
+    proposals.record_cr_drafted(proposal["proposal_id"], cr.model_dump(), model=str(getattr(llm, "model", llm.name)))
+    print(render_markdown(cr))
+    return 0  # warnings (ungrounded URLs, injection flags) are shown in the CR, not an exit code
+
+
 def cmd_build_index(args: argparse.Namespace) -> int:
     from cloudguard.rag.embed import FastEmbedder
     from cloudguard.rag.index import build_index
@@ -301,6 +336,9 @@ def main(argv: list[str] | None = None, llm: LLMClient | None = None) -> int:
     er.add_argument("--golden", type=Path, default=eval_retrieval.DEFAULT_GOLDEN_PATH)
     er.add_argument("--results-dir", type=Path, default=eval_retrieval.DEFAULT_RESULTS_DIR)
 
+    dc = sub.add_parser("draft-cr", help="draft a change request (Markdown) for a lock proposal; saved as a cr_drafted event")
+    dc.add_argument("proposal_id")
+
     args = p.parse_args(argv)
 
     if args.cmd == "llm-ping":
@@ -324,6 +362,9 @@ def main(argv: list[str] | None = None, llm: LLMClient | None = None) -> int:
 
     if args.cmd == "agent":
         return cmd_agent(args, backend, llm=llm)
+
+    if args.cmd == "draft-cr":
+        return cmd_draft_cr(args, backend, llm=llm)
 
     if args.cmd == "tool":
         kwargs = dict(a.split("=", 1) for a in args.arg)

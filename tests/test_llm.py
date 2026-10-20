@@ -21,7 +21,15 @@ def test_fake_llm_records_calls():
     messages = [{"role": "user", "content": "hi"}]
     llm.generate(messages, TOOL_SPECS)
 
-    assert llm.calls == [{"messages": messages, "tool_specs": TOOL_SPECS}]
+    assert llm.calls == [{"messages": messages, "tool_specs": TOOL_SPECS, "response_schema": None}]
+
+
+def test_fake_llm_records_response_schema():
+    llm = FakeLLM([LLMResponse(text="{}")])
+    schema = {"type": "object", "properties": {}}
+    llm.generate([], [], response_schema=schema)
+
+    assert llm.calls[0]["response_schema"] == schema
 
 
 def test_fake_llm_raises_when_script_is_exhausted():

@@ -28,12 +28,13 @@ from cloudguard.untrusted import scan_fields
 
 DEFAULT_PATH = "proposals.jsonl"
 LOCK_LEVEL = "CanNotDelete"  # fixed; ReadOnly can break running workloads and is never offered
+LOCK_NAME = "cg-proposed-lock"
 MAX_REASON_LENGTH = 1000
 
 # A bare resource group ID only - no /providers/... suffix. propose_lock is specifically
 # about resource groups, so a sub-resource ID (syntactically valid ARM ID, wrong shape for
 # this tool) is rejected here, distinct from validate_resource_id's general syntax check.
-_RG_ONLY_PATTERN = re.compile(r"^/subscriptions/[0-9a-fA-F-]{36}/resourceGroups/[-\w.()]{1,90}$", re.IGNORECASE)
+RG_ONLY_PATTERN = re.compile(r"^/subscriptions/[0-9a-fA-F-]{36}/resourceGroups/[-\w.()]{1,90}$", re.IGNORECASE)
 
 
 class ProposalRejected(ValueError):
@@ -64,6 +65,8 @@ def list_proposals() -> list[dict[str, Any]]:
     order: list[str] = []
     by_id: dict[str, dict[str, Any]] = {}
     for e in _read_events():
+        if e.get("event") == "cr_drafted":
+            continue  # a drafted change request is attached to a proposal, never part of its state
         pid = e["proposal_id"]
         if pid not in by_id:
             order.append(pid)
@@ -78,6 +81,26 @@ def get_proposal(proposal_id: str) -> dict[str, Any] | None:
     return next((p for p in list_proposals() if p["proposal_id"] == proposal_id), None)
 
 
+def record_cr_drafted(proposal_id: str, change_request: dict[str, Any], model: str) -> None:
+    """Append a `cr_drafted` event. Append-only like every other event: a second draft doesn't
+    overwrite the first, get_change_request just returns the latest. list_proposals() skips
+    these events entirely, so drafting never changes a proposal's status or fields."""
+    if get_proposal(proposal_id) is None:
+        raise ValueError(f"no such proposal: {proposal_id!r}")
+    _append_event({
+        "event": "cr_drafted",
+        "proposal_id": proposal_id,
+        "model": model,
+        "drafted_at": datetime.now(timezone.utc).isoformat(),
+        "change_request": change_request,
+    })
+
+
+def get_change_request(proposal_id: str) -> dict[str, Any] | None:
+    drafts = [e for e in _read_events() if e.get("event") == "cr_drafted" and e["proposal_id"] == proposal_id]
+    return drafts[-1]["change_request"] if drafts else None
+
+
 def _find_existing_proposal_this_run(run_id: str | None, resource_group_id: str) -> dict[str, Any] | None:
     normalized = resource_group_id.lower()
     created_ids = [
@@ -88,10 +111,10 @@ def _find_existing_proposal_this_run(run_id: str | None, resource_group_id: str)
     return get_proposal(created_ids[-1]) if created_ids else None
 
 
-def _suggested_command(resource_group_id: str) -> str:
+def suggested_command(resource_group_id: str) -> str:
     rg_name = resource_group_id.rsplit("/", 1)[-1]
     quoted_name = shlex.quote(rg_name)
-    return f"az lock create -n cg-proposed-lock -t {LOCK_LEVEL} -g {quoted_name}  # proposal only — not executed"
+    return f"az lock create -n {LOCK_NAME} -t {LOCK_LEVEL} -g {quoted_name}  # proposal only — not executed"
 
 
 def _create_proposal(run_id: str | None, resource_group_id: str, reason: str, backend_name: str) -> dict[str, Any]:
@@ -107,7 +130,7 @@ def _create_proposal(run_id: str | None, resource_group_id: str, reason: str, ba
         "reason_untrusted_text_flags": scan_fields(reason, None),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "status": "pending",
-        "suggested_command": _suggested_command(resource_group_id),
+        "suggested_command": suggested_command(resource_group_id),
     }
     _append_event(event)
     return {k: v for k, v in event.items() if k != "event"}
@@ -116,7 +139,7 @@ def _create_proposal(run_id: str | None, resource_group_id: str, reason: str, ba
 def propose_lock(backend: Backend, resource_group_id: str, reason: str) -> ToolResult:
     rg_id = validate_resource_id(resource_group_id)
 
-    if not _RG_ONLY_PATTERN.match(rg_id):
+    if not RG_ONLY_PATTERN.match(rg_id):
         raise ProposalRejected(f"propose_lock only accepts a resource group ID, not a sub-resource: {resource_group_id!r}")
     if len(reason) > MAX_REASON_LENGTH:
         raise ProposalRejected(f"reason must be at most {MAX_REASON_LENGTH} characters (got {len(reason)})")

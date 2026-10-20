@@ -27,6 +27,10 @@ be real and reproducible.
   real retrieved articles; `anchor_matched` records the finer signal. Failure shows a warning, it
   never silently removes or rewrites text. New answer-producing paths (e.g. change-request draft)
   must call `check_citations` too.
+- **Change-request commands come from code.** In `change_request.py` the LLM writes only the four
+  prose fields; every command is built from the validated resource group ID and constants, never
+  from names, tags, the proposal reason or LLM output. The delete-blocked check targets a scratch
+  group only, never the real one. `cr_drafted` events must not change `list_proposals()`.
 - **Validate IDs before they touch KQL** (`backends.validate_resource_id`).
 - **No employer data.** Only the synthetic sandbox, mock JSON and public Microsoft docs.
   No secrets in the repo; auth is DefaultAzureCredential (managed identity / OIDC / az login).

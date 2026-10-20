@@ -63,7 +63,12 @@ class LLMError(Exception):
         self.model = model
         super().__init__(f"{status}: {message} (model: {model})")
 
-    def generate(self, messages: list[dict[str, Any]], tool_specs: list[dict[str, Any]]) -> LLMResponse: ...
+    def generate(
+        self,
+        messages: list[dict[str, Any]],
+        tool_specs: list[dict[str, Any]],
+        response_schema: dict[str, Any] | None = None,
+    ) -> LLMResponse: ...
 
 
 # Our TOOL_SPECS (tools.py) use the Anthropic-style shape: name/description/input_schema,
@@ -146,7 +151,15 @@ class GeminiClient:
         self.max_retries = max_retries
         self._client = genai.Client(api_key=key)
 
-    def generate(self, messages: list[dict[str, Any]], tool_specs: list[dict[str, Any]]) -> LLMResponse:
+    def generate(
+        self,
+        messages: list[dict[str, Any]],
+        tool_specs: list[dict[str, Any]],
+        response_schema: dict[str, Any] | None = None,
+    ) -> LLMResponse:
+        """response_schema (a JSON Schema in our TOOL_SPECS dialect) asks for JSON output
+        matching it. Don't combine it with tool_specs: Gemini rejects tools together with a
+        JSON response mime type."""
         types = self._genai.types
         # Gemini has no "system" turn in contents; a system prompt is a separate config
         # field instead, so system-role messages are pulled out rather than converted.
@@ -157,6 +170,9 @@ class GeminiClient:
         if tool_specs:
             declarations = tool_specs_to_gemini(tool_specs)
             config_kwargs["tools"] = [types.Tool(function_declarations=declarations)]
+        if response_schema:
+            config_kwargs["response_mime_type"] = "application/json"
+            config_kwargs["response_schema"] = _json_schema_to_gemini_schema(response_schema)
         if system_texts:
             config_kwargs["system_instruction"] = "\n\n".join(system_texts)
         config = types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
@@ -253,8 +269,13 @@ class FakeLLM:
         self._script = list(script)
         self.calls: list[dict[str, Any]] = []
 
-    def generate(self, messages: list[dict[str, Any]], tool_specs: list[dict[str, Any]]) -> LLMResponse:
-        self.calls.append({"messages": messages, "tool_specs": tool_specs})
+    def generate(
+        self,
+        messages: list[dict[str, Any]],
+        tool_specs: list[dict[str, Any]],
+        response_schema: dict[str, Any] | None = None,
+    ) -> LLMResponse:
+        self.calls.append({"messages": list(messages), "tool_specs": tool_specs, "response_schema": response_schema})
         if not self._script:
             raise AssertionError("FakeLLM script exhausted: the agent loop called generate() more times than scripted")
         return self._script.pop(0)

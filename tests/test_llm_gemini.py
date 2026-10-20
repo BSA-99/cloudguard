@@ -220,3 +220,33 @@ def test_non_retryable_error_is_not_retried(monkeypatch):
     assert calls["n"] == 1
     assert exc_info.value.status == "INVALID_ARGUMENT"
     assert exc_info.value.message == "bad request"
+
+
+def test_response_schema_becomes_json_mime_type_and_gemini_schema(monkeypatch):
+    client = GeminiClient(api_key="fake")
+    captured = {}
+
+    def fake_generate_content(**kwargs):
+        captured.update(kwargs)
+        return _fake_success()
+
+    monkeypatch.setattr(client._client.models, "generate_content", fake_generate_content)
+    schema = {"type": "object", "properties": {"summary": {"type": "string"}}, "required": ["summary"]}
+
+    client.generate([{"role": "user", "content": "hi"}], [], response_schema=schema)
+
+    config = captured["config"]
+    assert config.response_mime_type == "application/json"
+    assert config.response_schema == {
+        "type": "OBJECT", "properties": {"summary": {"type": "STRING"}}, "required": ["summary"],
+    }
+    assert not config.tools
+
+
+def test_no_response_schema_leaves_mime_type_unset(monkeypatch):
+    client = GeminiClient(api_key="fake")
+    captured = {}
+    monkeypatch.setattr(client._client.models, "generate_content",
+                        lambda **kw: (captured.update(kw), _fake_success())[1])
+    client.generate([{"role": "system", "content": "s"}, {"role": "user", "content": "hi"}], [])
+    assert captured["config"].response_mime_type is None
