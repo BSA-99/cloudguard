@@ -77,6 +77,7 @@ after they are measured.
       the retrieval golden; IDs never hand-typed), `cloudguard validate-agent-golden` (schema, tools, IDs, articles,
       counts 6/2/4/2/4/3/5, builder match). Known limitations in the module docstring and README. No agent run yet;
       commit it before any agent run (frozen, like the retrieval set).
+- [x] Agent eval runner: `cloudguard eval-agent` (`evals/agent_eval.py` pure scoring, `evals/agent_runner.py` child-process runner; protocol pre-registered in `evals/RESULTS.md`). Official 99-run job not yet run.
 - [ ] Metrics: precision/recall vs ground truth, tool-selection accuracy, hallucinated IDs, retrieval hit rate, LLM-judge rubric for CRs, cost per run, latency
 - [ ] Run in GitHub Actions (key as repo secret, manual trigger)
 - [ ] One improvement with before/after numbers recorded in `evals/RESULTS.md`
