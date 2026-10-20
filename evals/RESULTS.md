@@ -222,3 +222,53 @@ Whatever the official run gives is reported as it is. Sections above are not edi
 - Smoke tests on 2-3 cases are allowed for debugging the harness. Their results are not reported anywhere, including in this file.
 - The official run is all 33 cases x 3 runs, executed once, at a recorded commit with a clean working tree.
 - Any fix after the official run (a bug, a wrong check, anything) is recorded as a **second run** with the reason. Both runs stay in this file with their results files named, and nothing is silently re-run or overwritten. The first run is the headline result unless a recorded second run states, with reasons written before its numbers are read, why it supersedes it.
+
+### Addendum to the agent eval protocol (before the official run), 2026-10-20: thinking tokens and the price table
+
+Written after the harness smoke test and before the official run. The protocol above is not edited.
+
+**Thinking tokens.** The Gemini API reports thinking tokens separately from visible output: the SDK's
+usage metadata has `candidates_token_count` (visible output) and `thoughts_token_count` (thinking) as
+separate fields, and Google's thinking guide shows total tokens as input + output + thought. The
+runner originally recorded only `candidates_token_count` as `tokens_out`, so **`tokens_out` excluded
+thinking tokens**. Gemini 3.5 Flash-Lite has thinking on by default ("On (minimal)"), and the runner sets no
+thinking configuration, so the default applies. A two-call probe of the live model before this change
+reported no thought tokens for either call (`thoughts_token_count` absent, total = input + visible output), so
+the size of the gap on real agent runs is not known until the official run records it.
+
+Fix, made before the official run and before any official result exists:
+- Each run records `tokens_thought` as its own field next to `tokens_in` and `tokens_out`; `tokens_out`
+  stays visible output only. Run records without the field (such as the unreported smoke file) read as 0.
+- The report totals in, out and thought separately.
+- **Cost = `tokens_in` x input price + (`tokens_out` + `tokens_thought`) x output price.** Google bills thinking
+  tokens at the output rate ("response pricing is the sum of output tokens and thinking tokens").
+
+**Price table (`evals/prices.json`).** Model `gemini-3.5-flash-lite`, Standard tier, paid: input 0.30 USD per 1M
+tokens (the same for text, image, video and audio), output 2.50 USD per 1M tokens, which the pricing page labels
+"including thinking tokens". Source: https://ai.google.dev/gemini-api/docs/pricing, retrieved 2026-10-20. The rule
+above still holds: a dollar figure is reported only because this entry is complete, with prices, a source URL and a date.
+Prices on that page can change; the retrieval date is recorded so the figure can be read in context.
+
+### Addendum to the agent eval protocol (before the official run), 2026-10-20: per-run timeout 120 s to 300 s, and per-call latency
+
+Written before the official run. The protocol and the earlier addendum are not edited.
+
+**Timeout.** The per-run timeout (the parent's wall-clock view of the child) changes from **120 seconds to
+300 seconds**. It remains a runaway guard, not a performance target.
+
+Reason: the harness smoke runs (not reported) showed 7.5 to 21 seconds per LLM call on average, with
+**zero retries** (attempts equal steps in every run), so the time is plain call latency, not backoff. At the
+default `max_steps` of 8, eight calls at the slowest observed average (about 21 s) reach about 170 seconds, which
+would exceed 120 seconds for a healthy run that simply uses all its steps. A timeout in that situation would
+measure API speed, not the agent. A follow-up timed probe of four single calls with the agent's real system prompt and
+tool specs agreed: 7.5 to 18.8 seconds per call, one attempt each, no thought tokens reported, and 14 to 41 visible
+output tokens per call.
+
+**This change was made before any official result existed, and it was not based on any pass or fail outcome.**
+It rests only on observed latency. The smoke runs are not reported anywhere, and no official run has happened. A
+run that still exceeds 300 seconds is a failed run (a timeout), exactly as the protocol says.
+
+**Per-call latency (extra detail).** Each run record now also has `llm_call_ms`, the wall time of every
+LLM call in call order (retries and backoff inside a call included); the list sums to `llm_ms`. This is extra detail
+only. The pre-registered latency metrics are unchanged: wall-clock per run, with the LLM-call-only total alongside,
+reported as median and p95 over runs. Records without the field read as an empty list.
