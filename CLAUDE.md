@@ -19,6 +19,14 @@ be real and reproducible.
   them visible, flag them with `untrusted.scan_fields`.
 - **No invented resource IDs.** Any ID the agent states must have come from a tool result;
   `get_resource` returns not-found for unknown IDs.
+- **Doc citations must be retrieved.** Any learn.microsoft.com URL in a final answer or change
+  request must come from a `search_docs` result in the same run (`grounding.check_citations`).
+  The rule is article-level on purpose: URLs are normalized (host/scheme lowercased, query, locale
+  and trailing slash stripped, `#anchor` split off) and matched on article path only. Retrieval
+  returns section chunks and heading slugs can drift, so anchor-strictness would false-alarm on
+  real retrieved articles; `anchor_matched` records the finer signal. Failure shows a warning, it
+  never silently removes or rewrites text. New answer-producing paths (e.g. change-request draft)
+  must call `check_citations` too.
 - **Validate IDs before they touch KQL** (`backends.validate_resource_id`).
 - **No employer data.** Only the synthetic sandbox, mock JSON and public Microsoft docs.
   No secrets in the repo; auth is DefaultAzureCredential (managed identity / OIDC / az login).

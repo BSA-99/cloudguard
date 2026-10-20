@@ -75,6 +75,7 @@ def record(
     error: str | None = None,
     run_id: str | None = None,
     grounded_ids: list[str] | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     entry = {
         "ts": datetime.now(timezone.utc).isoformat(),
@@ -89,6 +90,7 @@ def record(
         "result_ids": result_ids,
         "grounded_ids": grounded_ids,
         "error": error,
+        **(extra or {}),
     }
     path = log_path()
     path.parent.mkdir(parents=True, exist_ok=True)

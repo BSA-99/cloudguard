@@ -105,6 +105,11 @@ def _print_agent_run(run: AgentRun, llm: LLMClient) -> None:
 
     print("\n== Answer ==")
     print(run.final_answer or "(no final answer — stopped at max_steps)")
+    if run.citations_ok is False:
+        print("\n!! WARNING: the answer cites learn.microsoft.com URLs that search_docs did not return this run.")
+        print("!! Treat these citations as unverified (answer text above is unchanged):")
+        for url in run.ungrounded_urls:
+            print(f"!!   {url}")
 
     print("\n== Grounding ==")
     if run.grounding_ok is None:
@@ -115,6 +120,18 @@ def _print_agent_run(run: AgentRun, llm: LLMClient) -> None:
         print("FAILED")
         for rid in run.ungrounded_ids:
             print(f"  ungrounded: {rid}")
+
+    print("\n== Citations ==")
+    if run.citations_ok is None:
+        print("not checked (no final answer)")
+    elif run.citations_ok:
+        print(f"ok ({len(run.cited_urls)} cited)")
+    else:
+        print("FAILED")
+        for url in run.ungrounded_urls:
+            print(f"  ungrounded: {url}")
+    for url in run.external_urls:
+        print(f"  external (not checked): {url}")
 
     print("\n== Proposals ==")
     seen_proposal_ids: set[str] = set()

@@ -57,6 +57,12 @@ class AgentRun:
     # None means the grounding check never ran (e.g. max_steps with no final answer) - an
     # eval harness must not read that as "passed."
     grounding_ok: bool | None = None
+    # Citation grounding (learn.microsoft.com URLs vs this run's search_docs results). Same
+    # None-means-never-checked convention. A failure is a warning, never a rewrite of the answer.
+    cited_urls: list[dict[str, Any]] = field(default_factory=list)
+    ungrounded_urls: list[str] = field(default_factory=list)
+    external_urls: list[str] = field(default_factory=list)
+    citations_ok: bool | None = None
     # Which DETECTORS tools were actually called this run. A detector missing here means
     # that part of the audit never happened - the CLI and UI must surface that, not stay
     # silent about an incomplete audit.
@@ -145,10 +151,18 @@ def run_agent(
                 run.grounded_ids = report.grounded_ids
                 run.ungrounded_ids = report.ungrounded_ids
                 run.grounding_ok = report.grounding_ok
+                run.cited_urls = report.cited_urls
+                run.ungrounded_urls = report.ungrounded_urls
+                run.external_urls = report.external_urls
+                run.citations_ok = report.citations_ok
                 audit_log.record(
                     tool="grounding_check", args={}, backend=backend.name, ok=report.grounding_ok,
                     duration_ms=0.0, result_count=len(report.ungrounded_ids), result_ids=report.ungrounded_ids,
                     grounded_ids=report.grounded_ids,
+                    extra={
+                        "cited_urls": report.cited_urls, "ungrounded_urls": report.ungrounded_urls,
+                        "external_urls": report.external_urls, "citations_ok": report.citations_ok,
+                    },
                     error=None if report.grounding_ok else "final answer cites resource IDs not grounded in any tool result this run",
                 )
                 return run

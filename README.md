@@ -48,6 +48,10 @@ environment or a local `.env`, never from the repo.
 stops on a final answer or `max_steps`. After a final answer, `grounding.check_grounding`
 verifies every resource ID the model cited actually came from a tool result this run —
 if not, `grounding_ok=False` and the run counts as failed even though the model answered.
+Any `learn.microsoft.com` URL in the answer must likewise have been returned by `search_docs`
+in the same run (`citations_ok`; article-level, anchors don't matter, see the `grounding.py`
+docstring). A failure prints a visible warning under the unchanged answer; non-Microsoft URLs are
+listed as `external_urls` and not graded.
 `AgentRun.findings` holds the deduplicated, deterministic findings from this run's detector
 tools, independent of whatever the model's prose claims.
 

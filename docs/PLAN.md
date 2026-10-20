@@ -53,6 +53,13 @@ after they are measured.
       unit-tested on hand-made rankings. Measured once on the committed index (21/21 `claude-drafted`, no
       `human`/`out_of_scope` queries yet): hit@1=0.81, hit@3=1.00, hit@5=1.00, MRR=0.897, section
       hit@3=0.58 (n=12), top-1 score min/median/max=0.64/0.79/0.87.
+- [x] Citation grounding: any learn.microsoft.com URL in a final answer must come from a `search_docs` result
+      in the same run. Article-level rule (`grounding.normalize_doc_url`: lowercase scheme/host, strip query,
+      locale, trailing slash, split `#anchor`; anchor never affects grounding, `anchor_matched` is a separate
+      precision signal). `check_citations` (pure, also called by `check_grounding`) reports `cited_urls`,
+      `ungrounded_urls`, `external_urls` (non-Learn hosts, listed but not graded) and `citations_ok`; these go
+      on `AgentRun` and into the `grounding_check` audit entry. Failure is a visible CLI warning under the
+      unchanged answer, not an exit-code change or a rewrite. Reusable for the change-request draft below.
 - [ ] Change-request draft: summary, risk, rollback, test plan, citations (URLs from retrieval only)
 
 ## Day 4 — Evals
